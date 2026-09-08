@@ -4,6 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Stardust Developer Console</title>
+    <!-- Google Font & Font Awesome for clean icons (optional but used for Google btn) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
         :root {
             --primary: #2563eb;
@@ -162,6 +164,50 @@
         }
         .login-box .toggle-mode span:hover {
             text-decoration: underline;
+        }
+        /* Google button */
+        .google-btn {
+            width: 100%;
+            padding: 12px;
+            background: #fff;
+            color: #333;
+            border-radius: var(--radius-sm);
+            font-size: 15px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            border: 1px solid #ddd;
+            transition: var(--transition);
+            margin-bottom: 16px;
+        }
+        .google-btn:hover {
+            background: #f0f0f0;
+        }
+        .google-btn img {
+            width: 20px;
+            height: 20px;
+        }
+        .divider {
+            display: flex;
+            align-items: center;
+            color: var(--text-muted);
+            font-size: 12px;
+            margin: 12px 0 16px;
+        }
+        .divider::before,
+        .divider::after {
+            content: "";
+            flex: 1;
+            height: 1px;
+            background: var(--border-color);
+        }
+        .divider::before {
+            margin-right: 12px;
+        }
+        .divider::after {
+            margin-left: 12px;
         }
 
         .app-container {
@@ -817,7 +863,7 @@
             padding: 24px;
             overflow-y: auto;
             width: 100%;
-            max-width: 550px;
+            max-width: 650px;
             animation: modalIn 0.25s ease;
         }
         @keyframes modalIn {
@@ -1049,6 +1095,11 @@
                 <h1>Stardust Console</h1>
                 <p>Developer Dashboard</p>
             </div>
+            <!-- Google Login Button (above email form) -->
+            <button class="google-btn" id="googleLoginBtn" onclick="signInWithGoogle()">
+                <i class="fab fa-google" style="font-size:20px;color:#4285F4;"></i> Sign in with Google
+            </button>
+            <div class="divider">or</div>
             <form id="loginForm" onsubmit="handleAuth(event)">
                 <div id="loginMessage" class="error-msg"></div>
                 <div class="form-group">
@@ -1540,52 +1591,117 @@
         </main>
     </div>
 
-    <!-- DETAILS MODAL -->
-    <div class="modal-overlay" id="detailsModal" onclick="if(event.target===this)closeDetailsModal()">
-        <div class="modal-content" style="max-width:600px;">
-            <button class="modal-close" onclick="closeDetailsModal()">✕</button>
-            <h4 id="detailTitle" style="margin-bottom:16px;">App Details</h4>
-            <div id="detailContent"></div>
-        </div>
-    </div>
-
-    <!-- EDIT MODAL -->
+    <!-- EDIT MODAL (FULL EDIT) -->
     <div class="modal-overlay" id="editModal" onclick="if(event.target===this)closeEditModal()">
         <div class="modal-content">
             <button class="modal-close" onclick="closeEditModal()">✕</button>
-            <h4 style="margin-bottom:16px;">Edit App</h4>
-            <form id="editForm" onsubmit="saveEdit(event)">
-                <div class="form-group">
-                    <label>App Name</label>
-                    <input type="text" id="editName" required />
+            <h4 style="margin-bottom:16px;">Edit App (Full)</h4>
+            <form id="editForm" onsubmit="saveFullEdit(event)">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>App Name <span class="required">*</span></label>
+                        <input type="text" id="editName" required />
+                    </div>
+                    <div class="form-group">
+                        <label>Category <span class="required">*</span></label>
+                        <select id="editCategory">
+                            <option>Games</option><option>Social</option><option>AI</option>
+                            <option>Entertainment</option><option>Tools</option><option>Shopping</option>
+                            <option>Music</option><option>Education</option><option>Health</option>
+                            <option>Photography</option><option>Finance</option><option>Travel</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Package Name</label>
+                        <input type="text" id="editPackage" />
+                    </div>
+                    <div class="form-group">
+                        <label>Version</label>
+                        <input type="text" id="editVersion" />
+                    </div>
                 </div>
                 <div class="form-group">
-                    <label>Category</label>
-                    <select id="editCategory">
-                        <option>Games</option><option>Social</option><option>AI</option>
-                        <option>Entertainment</option><option>Tools</option><option>Shopping</option>
-                        <option>Music</option><option>Education</option><option>Health</option>
-                        <option>Photography</option><option>Finance</option><option>Travel</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Short Description</label>
+                    <label>Short Description <span class="required">*</span></label>
                     <input type="text" id="editShortDesc" required />
                 </div>
                 <div class="form-group">
-                    <label>Full Description</label>
+                    <label>Full Description <span class="required">*</span></label>
                     <textarea id="editLongDesc" rows="4" required></textarea>
                 </div>
-                <div class="form-group">
-                    <label>Tags (comma separated)</label>
-                    <input type="text" id="editTags" />
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>APK URL</label>
+                        <input type="url" id="editApkUrl" placeholder="https://example.com/app.apk" />
+                    </div>
+                    <div class="form-group">
+                        <label>APK Size (MB)</label>
+                        <input type="text" id="editSize" placeholder="42 MB" />
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Icon URL (or upload below)</label>
+                        <input type="text" id="editIconUrl" placeholder="https://example.com/icon.png" />
+                        <input type="file" id="editIconFile" accept="image/*" onchange="previewEditIcon(this)" style="margin-top:6px;" />
+                        <div class="preview-box" id="editIconPreview"></div>
+                    </div>
+                    <div class="form-group">
+                        <label>Banner URL (or upload below)</label>
+                        <input type="text" id="editBannerUrl" placeholder="https://example.com/banner.png" />
+                        <input type="file" id="editBannerFile" accept="image/*" onchange="previewEditBanner(this)" style="margin-top:6px;" />
+                        <div class="preview-box" id="editBannerPreview"></div>
+                    </div>
                 </div>
                 <div class="form-group">
-                    <label>Support Email</label>
-                    <input type="email" id="editSupportEmail" />
+                    <label>Screenshots (upload new to replace)</label>
+                    <input type="file" id="editScreenshots" accept="image/*" multiple onchange="previewEditScreens(this)" />
+                    <div class="preview-box" id="editScreensPreview"></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Tags (comma separated)</label>
+                        <input type="text" id="editTags" />
+                    </div>
+                    <div class="form-group">
+                        <label>Support Email</label>
+                        <input type="email" id="editSupportEmail" />
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Privacy Policy URL</label>
+                        <input type="url" id="editPrivacy" />
+                    </div>
+                    <div class="form-group">
+                        <label>Website</label>
+                        <input type="url" id="editWebsite" />
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>YouTube Video ID</label>
+                        <input type="text" id="editYoutube" placeholder="dQw4w9WgXcQ" />
+                    </div>
+                    <div class="form-group">
+                        <label>Minimum Android</label>
+                        <input type="text" id="editMinAndroid" placeholder="5.0" />
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>What's New</label>
+                    <textarea id="editWhatsNew" rows="4" placeholder="Bug fixes, new features..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Status</label>
+                    <select id="editStatus">
+                        <option value="live">Live</option>
+                        <option value="draft">Draft</option>
+                    </select>
                 </div>
                 <input type="hidden" id="editAppId" />
-                <button type="submit" class="btn-primary">Save Changes</button>
+                <button type="submit" class="btn-primary">Save Full Changes</button>
             </form>
         </div>
     </div>
@@ -1725,6 +1841,18 @@
                 });
         }
 
+        // Google Sign-In
+        function signInWithGoogle() {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            auth.signInWithPopup(provider)
+                .then(result => {
+                    initApp(result.user);
+                })
+                .catch(err => {
+                    alert('Google Sign-In failed: ' + err.message);
+                });
+        }
+
         // ============================================
         // INIT APP
         // ============================================
@@ -1764,10 +1892,6 @@
                 showLoading(false);
             }
         });
-
-        if (localStorage.getItem('stardust_uid') && auth.currentUser) {
-            // Already logged in
-        }
 
         // ============================================
         // LOGOUT
@@ -1821,7 +1945,6 @@
             db.ref('apps').on('value', snapshot => {
                 const data = snapshot.val();
                 allApps = data ? Object.keys(data).map(key => ({ id: key, ...data[key] })) : [];
-                // Filter by developer
                 if (currentUser) {
                     allApps = allApps.filter(a => a.developerUid === currentUser.uid);
                 }
@@ -1863,7 +1986,7 @@
             $('statLiveApps').textContent = live;
             $('appCountBadge').textContent = total;
 
-            // Chart
+            // Chart dummy
             const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
             const maxHeight = 100;
             days.forEach((day, i) => {
@@ -1940,7 +2063,7 @@
         }
 
         // ============================================
-        // UPLOAD - Step Wizard
+        // UPLOAD - Step Wizard (unchanged)
         // ============================================
         function nextStep(step) {
             currentStep = step;
@@ -2103,7 +2226,6 @@
             Promise.all(uploadPromises).then(() => {
                 const packageName = $('upPackage').value.trim();
                 const status = $('upStatus').value;
-                // Default to live if not draft
                 const finalStatus = status === 'draft' ? 'draft' : 'live';
 
                 const appData = {
@@ -2176,57 +2298,12 @@
         function viewAppDetails(appId) {
             const app = allApps.find(a => a.id === appId);
             if (!app) return;
-
-            $('detailTitle').textContent = `${app.name || 'App'} - Details`;
-            const content = $('detailContent');
-
-            let screenshotsHtml = '';
-            if (app.screenshot) {
-                const imgs = app.screenshot.split(',');
-                screenshotsHtml = `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">`;
-                imgs.forEach(url => {
-                    if (url.trim()) {
-                        screenshotsHtml += `<img src="${url.trim()}" style="height:60px;border-radius:6px;object-fit:cover;border:1px solid var(--border-color);cursor:pointer;" onclick="window.open('${url.trim()}','_blank')">`;
-                    }
-                });
-                screenshotsHtml += `</div>`;
-            }
-
-            content.innerHTML = `
-                <div style="display:flex;gap:12px;margin-bottom:16px;">
-                    <img src="${app.icon || 'https://img.icons8.com/color/144/android-os.png'}" style="width:64px;height:64px;border-radius:14px;object-fit:cover;border:1px solid var(--border-color);">
-                    <div>
-                        <div style="font-size:18px;font-weight:600;">${app.name}</div>
-                        <div style="color:var(--text-gray);">${app.package || 'N/A'}</div>
-                        <div style="color:var(--primary-light);">${app.developerName || 'Unknown'}</div>
-                    </div>
-                </div>
-                <div class="app-detail-row"><span class="label">Version</span><span class="value">${app.version || 'N/A'}</span></div>
-                <div class="app-detail-row"><span class="label">Category</span><span class="value">${app.category || 'N/A'}</span></div>
-                <div class="app-detail-row"><span class="label">Size</span><span class="value">${app.size || 'N/A'}</span></div>
-                <div class="app-detail-row"><span class="label">Status</span><span class="value">${app.status || 'N/A'}</span></div>
-                <div class="app-detail-row"><span class="label">Downloads</span><span class="value">${app.downloadCount || 0}</span></div>
-                <div class="app-detail-row"><span class="label">Views</span><span class="value">${app.views || 0}</span></div>
-                <div class="app-detail-row"><span class="label">Rating</span><span class="value">${app.rating || 'N/A'}</span></div>
-                <div class="app-detail-row"><span class="label">APK URL</span><span class="value"><a href="${app.downloadUrl || '#'}" target="_blank" style="color:var(--primary);">${app.downloadUrl || 'N/A'}</a></span></div>
-                <div class="app-detail-row"><span class="label">Short Description</span><span class="value">${app.shortDescription || 'N/A'}</span></div>
-                <div class="app-detail-row"><span class="label">Description</span><span class="value">${app.description || 'No description'}</span></div>
-                ${app.whatsNew ? `<div class="app-detail-row"><span class="label">What's New</span><span class="value">${app.whatsNew.replace(/\n/g, '<br>')}</span></div>` : ''}
-                ${app.tags ? `<div class="app-detail-row"><span class="label">Tags</span><span class="value">${app.tags}</span></div>` : ''}
-                ${screenshotsHtml ? `<div class="app-detail-row"><span class="label">Screenshots</span><span class="value">${screenshotsHtml}</span></div>` : ''}
-                ${app.banner ? `<div class="app-detail-row"><span class="label">Banner</span><span class="value"><img src="${app.banner}" style="max-width:100%;max-height:100px;border-radius:6px;object-fit:cover;"></span></div>` : ''}
-                ${app.verified ? `<div class="app-detail-row"><span class="label">Verified</span><span class="value" style="color:var(--green);">Yes</span></div>` : ''}
-            `;
-
-            $('detailsModal').classList.add('open');
-        }
-
-        function closeDetailsModal() {
-            $('detailsModal').classList.remove('open');
+            let details = `Name: ${app.name}\nPackage: ${app.package}\nVersion: ${app.version}\nCategory: ${app.category}\nStatus: ${app.status}\nDownloads: ${app.downloadCount}\nViews: ${app.views}\nRating: ${app.rating}\nAPK: ${app.downloadUrl}\nSize: ${app.size}\nDescription: ${app.description}\nShort: ${app.shortDescription}\nTags: ${app.tags}\nSupport: ${app.supportEmail}\nPrivacy: ${app.privacyPolicy}\nWebsite: ${app.website}\nYouTube: ${app.youtube}\nMin Android: ${app.minAndroid}\nWhat's New: ${app.whatsNew}`;
+            alert(details);
         }
 
         // ============================================
-        // EDIT APP
+        // EDIT APP - FULL
         // ============================================
         function openEditModal(appId) {
             const app = allApps.find(a => a.id === appId);
@@ -2235,10 +2312,26 @@
             $('editAppId').value = appId;
             $('editName').value = app.name || '';
             $('editCategory').value = app.category || 'Games';
+            $('editPackage').value = app.package || '';
+            $('editVersion').value = app.version || '';
             $('editShortDesc').value = app.shortDescription || '';
             $('editLongDesc').value = app.description || '';
+            $('editApkUrl').value = app.downloadUrl || '';
+            $('editSize').value = app.size || '';
+            $('editIconUrl').value = app.icon || '';
+            $('editBannerUrl').value = app.banner || '';
             $('editTags').value = app.tags || '';
             $('editSupportEmail').value = app.supportEmail || '';
+            $('editPrivacy').value = app.privacyPolicy || '';
+            $('editWebsite').value = app.website || '';
+            $('editYoutube').value = app.youtube || '';
+            $('editMinAndroid').value = app.minAndroid || '';
+            $('editWhatsNew').value = app.whatsNew || '';
+            $('editStatus').value = app.status || 'live';
+            // clear previews
+            $('editIconPreview').innerHTML = '';
+            $('editBannerPreview').innerHTML = '';
+            $('editScreensPreview').innerHTML = '';
             $('editModal').classList.add('open');
         }
 
@@ -2246,30 +2339,117 @@
             $('editModal').classList.remove('open');
         }
 
-        function saveEdit(e) {
+        function previewEditIcon(input) {
+            const container = $('editIconPreview');
+            container.innerHTML = '';
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = e => {
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.style.width = '60px';
+                    img.style.height = '60px';
+                    img.style.borderRadius = '8px';
+                    img.style.objectFit = 'cover';
+                    container.appendChild(img);
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        function previewEditBanner(input) {
+            const container = $('editBannerPreview');
+            container.innerHTML = '';
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = e => {
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.style.width = '120px';
+                    img.style.height = '60px';
+                    img.style.borderRadius = '8px';
+                    img.style.objectFit = 'cover';
+                    container.appendChild(img);
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        function previewEditScreens(input) {
+            const container = $('editScreensPreview');
+            container.innerHTML = '';
+            if (input.files) {
+                Array.from(input.files).forEach(file => {
+                    const reader = new FileReader();
+                    reader.onload = e => {
+                        const img = document.createElement('img');
+                        img.className = 'screenshot-preview';
+                        img.src = e.target.result;
+                        container.appendChild(img);
+                    };
+                    reader.readAsDataURL(file);
+                });
+            }
+        }
+
+        function saveFullEdit(e) {
             e.preventDefault();
             const id = $('editAppId').value;
-            const updates = {
-                name: $('editName').value,
-                category: $('editCategory').value,
-                shortDescription: $('editShortDesc').value,
-                description: $('editLongDesc').value,
-                tags: $('editTags').value,
-                supportEmail: $('editSupportEmail').value,
-                updatedDate: new Date().toISOString().split('T')[0]
-            };
+            const iconFile = $('editIconFile').files[0];
+            const bannerFile = $('editBannerFile').files[0];
+            const screenshotFiles = $('editScreenshots').files;
 
-            db.ref(`apps/${id}`).update(updates).then(() => {
-                addActivityLog(`App "${updates.name}" edited`);
-                addNotification(`App "${updates.name}" updated successfully!`);
-                closeEditModal();
-                renderMyApps();
-                alert('App updated successfully!');
+            let iconUrl = $('editIconUrl').value;
+            let bannerUrl = $('editBannerUrl').value;
+            let screenshotUrls = [];
+
+            const uploadPromises = [];
+            if (iconFile) uploadPromises.push(uploadToImgBB(iconFile).then(url => iconUrl = url));
+            if (bannerFile) uploadPromises.push(uploadToImgBB(bannerFile).then(url => bannerUrl = url));
+            Array.from(screenshotFiles).forEach(file => {
+                uploadPromises.push(uploadToImgBB(file).then(url => screenshotUrls.push(url)));
+            });
+
+            Promise.all(uploadPromises).then(() => {
+                const updates = {
+                    name: $('editName').value,
+                    category: $('editCategory').value,
+                    package: $('editPackage').value,
+                    version: $('editVersion').value,
+                    shortDescription: $('editShortDesc').value,
+                    description: $('editLongDesc').value,
+                    downloadUrl: $('editApkUrl').value,
+                    size: $('editSize').value,
+                    icon: iconUrl || 'https://img.icons8.com/color/144/android-os.png',
+                    banner: bannerUrl,
+                    tags: $('editTags').value,
+                    supportEmail: $('editSupportEmail').value,
+                    privacyPolicy: $('editPrivacy').value,
+                    website: $('editWebsite').value,
+                    youtube: $('editYoutube').value,
+                    minAndroid: $('editMinAndroid').value,
+                    whatsNew: $('editWhatsNew').value,
+                    status: $('editStatus').value,
+                    updatedDate: new Date().toISOString().split('T')[0]
+                };
+                if (screenshotUrls.length) {
+                    updates.screenshot = screenshotUrls.join(',');
+                }
+
+                db.ref(`apps/${id}`).update(updates).then(() => {
+                    addActivityLog(`App "${updates.name}" fully edited`);
+                    addNotification(`App "${updates.name}" updated successfully!`);
+                    closeEditModal();
+                    renderMyApps();
+                    alert('App updated with full fields!');
+                });
+            }).catch(err => {
+                alert('Image upload failed: ' + err.message);
             });
         }
 
         // ============================================
-        // UPDATE APP
+        // UPDATE APP (unchanged)
         // ============================================
         function openUpdateModal(appId) {
             const app = allApps.find(a => a.id === appId);
@@ -2329,7 +2509,7 @@
         }
 
         // ============================================
-        // ANALYTICS
+        // ANALYTICS (unchanged)
         // ============================================
         function populateAnalyticsSelect() {
             const select = $('anaAppSelect');
@@ -2386,7 +2566,7 @@
         }
 
         // ============================================
-        // REVIEWS
+        // REVIEWS (unchanged)
         // ============================================
         function populateReviewSelect() {
             const select = $('reviewAppSelect');
@@ -2487,7 +2667,7 @@
         }
 
         // ============================================
-        // NOTIFICATIONS
+        // NOTIFICATIONS (unchanged)
         // ============================================
         function loadNotifications() {
             if (!currentUser) return;
@@ -2547,7 +2727,7 @@
         }
 
         // ============================================
-        // ACTIVITY LOG
+        // ACTIVITY LOG (unchanged)
         // ============================================
         function addActivityLog(action) {
             activityLog.unshift({ action, timestamp: Date.now() });
@@ -2584,7 +2764,7 @@
         }
 
         // ============================================
-        // PROFILE
+        // PROFILE (unchanged)
         // ============================================
         function loadProfile() {
             if (!currentUser) return;
@@ -2639,7 +2819,7 @@
         }
 
         // ============================================
-        // SETTINGS
+        // SETTINGS (unchanged)
         // ============================================
         function changePassword() {
             const currentPw = prompt('Enter current password:');
@@ -2707,7 +2887,7 @@
         }
 
         // ============================================
-        // THEME TOGGLE
+        // THEME TOGGLE (unchanged)
         // ============================================
         let darkMode = true;
 
@@ -2757,6 +2937,7 @@
         console.log('🔄 Real-time: Apps sync automatically with Firebase');
         console.log('📝 Drafts: Save progress and continue later');
         console.log('✅ Apps go LIVE immediately after upload - no approval needed!');
+        console.log('🔐 Google Sign-In enabled!');
     </script>
 </body>
 </html>
