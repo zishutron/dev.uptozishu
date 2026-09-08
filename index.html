@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Stardust Developer Console</title>
-    <!-- Google Font & Font Awesome for clean icons (optional but used for Google btn) -->
+    <!-- Font Awesome for Google icon -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
         :root {
@@ -165,7 +165,6 @@
         .login-box .toggle-mode span:hover {
             text-decoration: underline;
         }
-        /* Google button */
         .google-btn {
             width: 100%;
             padding: 12px;
@@ -185,9 +184,9 @@
         .google-btn:hover {
             background: #f0f0f0;
         }
-        .google-btn img {
-            width: 20px;
-            height: 20px;
+        .google-btn i {
+            font-size: 20px;
+            color: #4285F4;
         }
         .divider {
             display: flex;
@@ -286,9 +285,6 @@
         }
         .sidebar .nav-item .badge.red {
             background: var(--red);
-        }
-        .sidebar .nav-item .badge.yellow {
-            background: var(--yellow);
         }
         .sidebar .bottom-nav {
             margin-top: auto;
@@ -496,10 +492,6 @@
         .app-list-item .app-actions button.danger:hover {
             border-color: var(--red);
             color: var(--red);
-        }
-        .app-list-item .app-actions button.success:hover {
-            border-color: var(--green);
-            color: var(--green);
         }
 
         .upload-form {
@@ -863,7 +855,7 @@
             padding: 24px;
             overflow-y: auto;
             width: 100%;
-            max-width: 650px;
+            max-width: 700px;
             animation: modalIn 0.25s ease;
         }
         @keyframes modalIn {
@@ -1002,6 +994,67 @@
             color: var(--red);
         }
 
+        /* Edit modal - clean card style */
+        .edit-card {
+            background: var(--bg-card);
+            border-radius: var(--radius-sm);
+            padding: 20px;
+            border: 1px solid var(--border-color);
+        }
+        .edit-card .form-group {
+            margin-bottom: 14px;
+        }
+        .edit-card .form-group label {
+            display: block;
+            font-size: 13px;
+            color: var(--text-gray);
+            margin-bottom: 4px;
+            font-weight: 500;
+        }
+        .edit-card .form-group input,
+        .edit-card .form-group textarea,
+        .edit-card .form-group select {
+            width: 100%;
+            padding: 10px 14px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border-color);
+            background: var(--bg-input);
+            color: var(--text-light);
+            font-size: 14px;
+            outline: none;
+            transition: var(--transition);
+        }
+        .edit-card .form-group input:focus,
+        .edit-card .form-group textarea:focus,
+        .edit-card .form-group select:focus {
+            border-color: var(--primary);
+        }
+        .edit-card .form-group textarea {
+            resize: vertical;
+            min-height: 60px;
+        }
+        .edit-card .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+        }
+        .edit-card .form-row.full {
+            grid-template-columns: 1fr;
+        }
+        .edit-card .preview-box {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 6px;
+        }
+        .edit-card .preview-box img {
+            width: 60px;
+            height: 60px;
+            border-radius: 8px;
+            object-fit: cover;
+            border: 1px solid var(--border-color);
+        }
+
         @media (max-width: 768px) {
             .sidebar {
                 width: 60px;
@@ -1055,6 +1108,9 @@
                 padding: 28px 20px;
                 margin: 0 12px;
             }
+            .edit-card .form-row {
+                grid-template-columns: 1fr;
+            }
         }
         @media (max-width: 480px) {
             .stats-grid {
@@ -1095,9 +1151,9 @@
                 <h1>Stardust Console</h1>
                 <p>Developer Dashboard</p>
             </div>
-            <!-- Google Login Button (above email form) -->
+            <!-- Google Login -->
             <button class="google-btn" id="googleLoginBtn" onclick="signInWithGoogle()">
-                <i class="fab fa-google" style="font-size:20px;color:#4285F4;"></i> Sign in with Google
+                <i class="fab fa-google"></i> Sign in with Google
             </button>
             <div class="divider">or</div>
             <form id="loginForm" onsubmit="handleAuth(event)">
@@ -1591,118 +1647,119 @@
         </main>
     </div>
 
-    <!-- EDIT MODAL (FULL EDIT) -->
+    <!-- EDIT MODAL - Clean & Streamlined, only file uploads -->
     <div class="modal-overlay" id="editModal" onclick="if(event.target===this)closeEditModal()">
         <div class="modal-content">
             <button class="modal-close" onclick="closeEditModal()">✕</button>
-            <h4 style="margin-bottom:16px;">Edit App (Full)</h4>
-            <form id="editForm" onsubmit="saveFullEdit(event)">
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>App Name <span class="required">*</span></label>
-                        <input type="text" id="editName" required />
+            <h4 style="margin-bottom:16px;">Edit App</h4>
+            <div class="edit-card">
+                <form id="editForm" onsubmit="saveFullEdit(event)">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>App Name <span class="required">*</span></label>
+                            <input type="text" id="editName" required />
+                        </div>
+                        <div class="form-group">
+                            <label>Category <span class="required">*</span></label>
+                            <select id="editCategory">
+                                <option>Games</option><option>Social</option><option>AI</option>
+                                <option>Entertainment</option><option>Tools</option><option>Shopping</option>
+                                <option>Music</option><option>Education</option><option>Health</option>
+                                <option>Photography</option><option>Finance</option><option>Travel</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Package Name</label>
+                            <input type="text" id="editPackage" />
+                        </div>
+                        <div class="form-group">
+                            <label>Version</label>
+                            <input type="text" id="editVersion" />
+                        </div>
                     </div>
                     <div class="form-group">
-                        <label>Category <span class="required">*</span></label>
-                        <select id="editCategory">
-                            <option>Games</option><option>Social</option><option>AI</option>
-                            <option>Entertainment</option><option>Tools</option><option>Shopping</option>
-                            <option>Music</option><option>Education</option><option>Health</option>
-                            <option>Photography</option><option>Finance</option><option>Travel</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Package Name</label>
-                        <input type="text" id="editPackage" />
+                        <label>Short Description <span class="required">*</span></label>
+                        <input type="text" id="editShortDesc" required />
                     </div>
                     <div class="form-group">
-                        <label>Version</label>
-                        <input type="text" id="editVersion" />
+                        <label>Full Description <span class="required">*</span></label>
+                        <textarea id="editLongDesc" rows="4" required></textarea>
                     </div>
-                </div>
-                <div class="form-group">
-                    <label>Short Description <span class="required">*</span></label>
-                    <input type="text" id="editShortDesc" required />
-                </div>
-                <div class="form-group">
-                    <label>Full Description <span class="required">*</span></label>
-                    <textarea id="editLongDesc" rows="4" required></textarea>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>APK URL</label>
-                        <input type="url" id="editApkUrl" placeholder="https://example.com/app.apk" />
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>APK URL</label>
+                            <input type="url" id="editApkUrl" placeholder="https://example.com/app.apk" />
+                        </div>
+                        <div class="form-group">
+                            <label>APK Size (MB)</label>
+                            <input type="text" id="editSize" placeholder="42 MB" />
+                        </div>
                     </div>
+                    <!-- Icon: only file upload -->
                     <div class="form-group">
-                        <label>APK Size (MB)</label>
-                        <input type="text" id="editSize" placeholder="42 MB" />
-                    </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Icon URL (or upload below)</label>
-                        <input type="text" id="editIconUrl" placeholder="https://example.com/icon.png" />
-                        <input type="file" id="editIconFile" accept="image/*" onchange="previewEditIcon(this)" style="margin-top:6px;" />
+                        <label>App Icon <span class="required">*</span></label>
+                        <input type="file" id="editIconFile" accept="image/*" onchange="previewEditIcon(this)" />
                         <div class="preview-box" id="editIconPreview"></div>
                     </div>
+                    <!-- Banner: only file upload -->
                     <div class="form-group">
-                        <label>Banner URL (or upload below)</label>
-                        <input type="text" id="editBannerUrl" placeholder="https://example.com/banner.png" />
-                        <input type="file" id="editBannerFile" accept="image/*" onchange="previewEditBanner(this)" style="margin-top:6px;" />
+                        <label>Feature Banner</label>
+                        <input type="file" id="editBannerFile" accept="image/*" onchange="previewEditBanner(this)" />
                         <div class="preview-box" id="editBannerPreview"></div>
                     </div>
-                </div>
-                <div class="form-group">
-                    <label>Screenshots (upload new to replace)</label>
-                    <input type="file" id="editScreenshots" accept="image/*" multiple onchange="previewEditScreens(this)" />
-                    <div class="preview-box" id="editScreensPreview"></div>
-                </div>
-                <div class="form-row">
+                    <!-- Screenshots: only file upload -->
                     <div class="form-group">
-                        <label>Tags (comma separated)</label>
-                        <input type="text" id="editTags" />
+                        <label>Screenshots (select multiple)</label>
+                        <input type="file" id="editScreenshots" accept="image/*" multiple onchange="previewEditScreens(this)" />
+                        <div class="preview-box" id="editScreensPreview"></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Tags (comma separated)</label>
+                            <input type="text" id="editTags" />
+                        </div>
+                        <div class="form-group">
+                            <label>Support Email</label>
+                            <input type="email" id="editSupportEmail" />
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Privacy Policy URL</label>
+                            <input type="url" id="editPrivacy" />
+                        </div>
+                        <div class="form-group">
+                            <label>Website</label>
+                            <input type="url" id="editWebsite" />
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>YouTube Video ID</label>
+                            <input type="text" id="editYoutube" placeholder="dQw4w9WgXcQ" />
+                        </div>
+                        <div class="form-group">
+                            <label>Minimum Android</label>
+                            <input type="text" id="editMinAndroid" placeholder="5.0" />
+                        </div>
                     </div>
                     <div class="form-group">
-                        <label>Support Email</label>
-                        <input type="email" id="editSupportEmail" />
-                    </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Privacy Policy URL</label>
-                        <input type="url" id="editPrivacy" />
+                        <label>What's New</label>
+                        <textarea id="editWhatsNew" rows="4" placeholder="Bug fixes, new features..."></textarea>
                     </div>
                     <div class="form-group">
-                        <label>Website</label>
-                        <input type="url" id="editWebsite" />
+                        <label>Status</label>
+                        <select id="editStatus">
+                            <option value="live">Live</option>
+                            <option value="draft">Draft</option>
+                        </select>
                     </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>YouTube Video ID</label>
-                        <input type="text" id="editYoutube" placeholder="dQw4w9WgXcQ" />
-                    </div>
-                    <div class="form-group">
-                        <label>Minimum Android</label>
-                        <input type="text" id="editMinAndroid" placeholder="5.0" />
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label>What's New</label>
-                    <textarea id="editWhatsNew" rows="4" placeholder="Bug fixes, new features..."></textarea>
-                </div>
-                <div class="form-group">
-                    <label>Status</label>
-                    <select id="editStatus">
-                        <option value="live">Live</option>
-                        <option value="draft">Draft</option>
-                    </select>
-                </div>
-                <input type="hidden" id="editAppId" />
-                <button type="submit" class="btn-primary">Save Full Changes</button>
-            </form>
+                    <input type="hidden" id="editAppId" />
+                    <button type="submit" class="btn-primary">Save Changes</button>
+                </form>
+            </div>
         </div>
     </div>
 
@@ -1824,6 +1881,7 @@
             btn.textContent = isLoginMode ? 'Signing in...' : 'Creating account...';
             errorEl.textContent = '';
 
+            // Clear any previous auth state to avoid conflicts
             const authFunc = isLoginMode ?
                 auth.signInWithEmailAndPassword(email, password) :
                 auth.createUserWithEmailAndPassword(email, password);
@@ -1892,6 +1950,43 @@
                 showLoading(false);
             }
         });
+
+        // ============================================
+        // THEME - Persistent
+        // ============================================
+        let darkMode = true;
+
+        function applyTheme(dark) {
+            const root = document.documentElement;
+            if (dark) {
+                root.style.setProperty('--bg-dark', '#0b0f19');
+                root.style.setProperty('--bg-card', '#111827');
+                root.style.setProperty('--bg-input', '#1f2937');
+                root.style.setProperty('--text-light', '#f9fafb');
+                root.style.setProperty('--text-gray', '#9ca3af');
+                root.style.setProperty('--border-color', '#374151');
+            } else {
+                root.style.setProperty('--bg-dark', '#f1f5f9');
+                root.style.setProperty('--bg-card', '#ffffff');
+                root.style.setProperty('--bg-input', '#e2e8f0');
+                root.style.setProperty('--text-light', '#0f172a');
+                root.style.setProperty('--text-gray', '#475569');
+                root.style.setProperty('--border-color', '#cbd5e1');
+            }
+            localStorage.setItem('stardust_dev_theme', dark ? 'dark' : 'light');
+            darkMode = dark;
+        }
+
+        const savedTheme = localStorage.getItem('stardust_dev_theme');
+        if (savedTheme === 'light') {
+            applyTheme(false);
+        } else {
+            applyTheme(true);
+        }
+
+        function toggleThemeSettings() {
+            applyTheme(!darkMode);
+        }
 
         // ============================================
         // LOGOUT
@@ -1998,7 +2093,6 @@
                 }
             });
 
-            // Top apps
             const topApps = [...allApps].sort((a, b) => (b.downloadCount || 0) - (a.downloadCount || 0)).slice(0, 5);
             const topList = $('topAppsList');
             topList.innerHTML = '';
@@ -2063,7 +2157,7 @@
         }
 
         // ============================================
-        // UPLOAD - Step Wizard (unchanged)
+        // UPLOAD - Step Wizard
         // ============================================
         function nextStep(step) {
             currentStep = step;
@@ -2303,7 +2397,7 @@
         }
 
         // ============================================
-        // EDIT APP - FULL
+        // EDIT APP - Full, only file uploads (no URL fields for images)
         // ============================================
         function openEditModal(appId) {
             const app = allApps.find(a => a.id === appId);
@@ -2318,8 +2412,6 @@
             $('editLongDesc').value = app.description || '';
             $('editApkUrl').value = app.downloadUrl || '';
             $('editSize').value = app.size || '';
-            $('editIconUrl').value = app.icon || '';
-            $('editBannerUrl').value = app.banner || '';
             $('editTags').value = app.tags || '';
             $('editSupportEmail').value = app.supportEmail || '';
             $('editPrivacy').value = app.privacyPolicy || '';
@@ -2328,10 +2420,40 @@
             $('editMinAndroid').value = app.minAndroid || '';
             $('editWhatsNew').value = app.whatsNew || '';
             $('editStatus').value = app.status || 'live';
-            // clear previews
+            // Clear previews
             $('editIconPreview').innerHTML = '';
             $('editBannerPreview').innerHTML = '';
             $('editScreensPreview').innerHTML = '';
+            // Show current icon as preview if available
+            if (app.icon) {
+                const img = document.createElement('img');
+                img.src = app.icon;
+                img.style.width = '60px';
+                img.style.height = '60px';
+                img.style.borderRadius = '8px';
+                img.style.objectFit = 'cover';
+                $('editIconPreview').appendChild(img);
+            }
+            if (app.banner) {
+                const img = document.createElement('img');
+                img.src = app.banner;
+                img.style.width = '120px';
+                img.style.height = '60px';
+                img.style.borderRadius = '8px';
+                img.style.objectFit = 'cover';
+                $('editBannerPreview').appendChild(img);
+            }
+            if (app.screenshot) {
+                const urls = app.screenshot.split(',');
+                urls.forEach(url => {
+                    if (url.trim()) {
+                        const img = document.createElement('img');
+                        img.src = url.trim();
+                        img.className = 'screenshot-preview';
+                        $('editScreensPreview').appendChild(img);
+                    }
+                });
+            }
             $('editModal').classList.add('open');
         }
 
@@ -2399,8 +2521,8 @@
             const bannerFile = $('editBannerFile').files[0];
             const screenshotFiles = $('editScreenshots').files;
 
-            let iconUrl = $('editIconUrl').value;
-            let bannerUrl = $('editBannerUrl').value;
+            let iconUrl = null;
+            let bannerUrl = null;
             let screenshotUrls = [];
 
             const uploadPromises = [];
@@ -2420,8 +2542,6 @@
                     description: $('editLongDesc').value,
                     downloadUrl: $('editApkUrl').value,
                     size: $('editSize').value,
-                    icon: iconUrl || 'https://img.icons8.com/color/144/android-os.png',
-                    banner: bannerUrl,
                     tags: $('editTags').value,
                     supportEmail: $('editSupportEmail').value,
                     privacyPolicy: $('editPrivacy').value,
@@ -2432,16 +2552,17 @@
                     status: $('editStatus').value,
                     updatedDate: new Date().toISOString().split('T')[0]
                 };
-                if (screenshotUrls.length) {
-                    updates.screenshot = screenshotUrls.join(',');
-                }
+                // Only update images if new files were uploaded
+                if (iconUrl) updates.icon = iconUrl;
+                if (bannerUrl) updates.banner = bannerUrl;
+                if (screenshotUrls.length) updates.screenshot = screenshotUrls.join(',');
 
                 db.ref(`apps/${id}`).update(updates).then(() => {
                     addActivityLog(`App "${updates.name}" fully edited`);
                     addNotification(`App "${updates.name}" updated successfully!`);
                     closeEditModal();
                     renderMyApps();
-                    alert('App updated with full fields!');
+                    alert('App updated successfully!');
                 });
             }).catch(err => {
                 alert('Image upload failed: ' + err.message);
@@ -2449,7 +2570,7 @@
         }
 
         // ============================================
-        // UPDATE APP (unchanged)
+        // UPDATE APP
         // ============================================
         function openUpdateModal(appId) {
             const app = allApps.find(a => a.id === appId);
@@ -2491,7 +2612,7 @@
                 addNotification(`Update for "${app.name}" is now LIVE!`);
                 closeUpdateModal();
                 renderMyApps();
-                alert('Update published successfully! App is now live with new version.');
+                alert('Update published successfully!');
             });
         }
 
@@ -2509,7 +2630,7 @@
         }
 
         // ============================================
-        // ANALYTICS (unchanged)
+        // ANALYTICS
         // ============================================
         function populateAnalyticsSelect() {
             const select = $('anaAppSelect');
@@ -2566,7 +2687,7 @@
         }
 
         // ============================================
-        // REVIEWS (unchanged)
+        // REVIEWS
         // ============================================
         function populateReviewSelect() {
             const select = $('reviewAppSelect');
@@ -2667,7 +2788,7 @@
         }
 
         // ============================================
-        // NOTIFICATIONS (unchanged)
+        // NOTIFICATIONS
         // ============================================
         function loadNotifications() {
             if (!currentUser) return;
@@ -2727,7 +2848,7 @@
         }
 
         // ============================================
-        // ACTIVITY LOG (unchanged)
+        // ACTIVITY LOG
         // ============================================
         function addActivityLog(action) {
             activityLog.unshift({ action, timestamp: Date.now() });
@@ -2764,7 +2885,7 @@
         }
 
         // ============================================
-        // PROFILE (unchanged)
+        // PROFILE
         // ============================================
         function loadProfile() {
             if (!currentUser) return;
@@ -2819,7 +2940,7 @@
         }
 
         // ============================================
-        // SETTINGS (unchanged)
+        // SETTINGS
         // ============================================
         function changePassword() {
             const currentPw = prompt('Enter current password:');
@@ -2873,10 +2994,6 @@
             });
         }
 
-        function toggleThemeSettings() {
-            toggleTheme();
-        }
-
         function changeLanguage() {
             const lang = prompt('Select language (en, hi, es, fr, de):', 'en');
             if (lang) {
@@ -2885,36 +3002,6 @@
                 alert(`Language set to ${lang}`);
             }
         }
-
-        // ============================================
-        // THEME TOGGLE (unchanged)
-        // ============================================
-        let darkMode = true;
-
-        function toggleTheme() {
-            darkMode = !darkMode;
-            const root = document.documentElement;
-            if (darkMode) {
-                root.style.setProperty('--bg-dark', '#0b0f19');
-                root.style.setProperty('--bg-card', '#111827');
-                root.style.setProperty('--bg-input', '#1f2937');
-                root.style.setProperty('--text-light', '#f9fafb');
-                root.style.setProperty('--text-gray', '#9ca3af');
-                root.style.setProperty('--border-color', '#374151');
-            } else {
-                root.style.setProperty('--bg-dark', '#f1f5f9');
-                root.style.setProperty('--bg-card', '#ffffff');
-                root.style.setProperty('--bg-input', '#e2e8f0');
-                root.style.setProperty('--text-light', '#0f172a');
-                root.style.setProperty('--text-gray', '#475569');
-                root.style.setProperty('--border-color', '#cbd5e1');
-            }
-            localStorage.setItem('stardust_dev_theme', darkMode ? 'dark' : 'light');
-        }
-
-        const savedTheme = localStorage.getItem('stardust_dev_theme');
-        if (savedTheme === 'light') { darkMode = false;
-            toggleTheme(); }
 
         // ============================================
         // INIT
@@ -2938,6 +3025,8 @@
         console.log('📝 Drafts: Save progress and continue later');
         console.log('✅ Apps go LIVE immediately after upload - no approval needed!');
         console.log('🔐 Google Sign-In enabled!');
+        console.log('🎨 Persistent theme saved in localStorage');
+        console.log('🖼️ Edit modal only uses file uploads for images (no URL fields)');
     </script>
 </body>
 </html>
