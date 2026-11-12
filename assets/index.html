@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <link rel="icon" type="image/png" href="/favicon.png">
+    <link rel="apple-touch-icon" href="/favicon.png">
+    <meta name="theme-color" content="#2563eb">
+    <title>Sign in — ZishuTron Apps Console</title>
+    <meta name="robots" content="noindex,nofollow">
+    <link rel="stylesheet" href="/assets/console.css">
+    <script>(function(){try{var t=localStorage.getItem('zt_console_theme');var l=t?t==='light':!matchMedia('(prefers-color-scheme: dark)').matches;if(l){var r=document.documentElement.style;r.setProperty('--bg-dark','#f1f5f9');r.setProperty('--bg-card','#ffffff');r.setProperty('--bg-input','#e2e8f0');r.setProperty('--text-light','#0f172a');r.setProperty('--text-gray','#475569');r.setProperty('--border-color','#cbd5e1');}}catch(e){}})();</script>
+</head>
+<body data-page="auth">
+
+    <!-- LOADING -->
+    <div class="loading-overlay show" id="loadingOverlay">
+        <div class="spinner"></div>
+        <div id="loadingText" style="color:var(--text-gray);font-size:14px;">Loading...</div>
+    </div>
+
+
+
+    <!-- LOGIN PAGE -->
+    <div class="login-page" id="loginPage">
+        <div class="login-box">
+            <div class="logo">
+                <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+                <h1>ZishuTron Apps Console</h1>
+                <p>Developer Dashboard</p>
+            </div>
+            <!-- Google Login -->
+            <button class="google-btn" id="googleLoginBtn" onclick="signInWithGoogle()">
+                <i class="fab fa-google"></i> Sign in with Google
+            </button>
+            <div class="divider">or</div>
+            <form id="loginForm" onsubmit="handleAuth(event)">
+                <div id="loginMessage" class="error-msg"></div>
+                <div class="form-group">
+                    <label for="loginEmail">Email Address</label>
+                    <input type="email" id="loginEmail" placeholder="developer@example.com" required />
+                </div>
+                <div class="form-group">
+                    <label for="loginPassword">Password</label>
+                    <input type="password" id="loginPassword" placeholder="••••••••" required minlength="6" />
+                </div>
+                <button type="submit" class="btn-primary" id="loginBtn">Sign In</button>
+                <div id="loginError" class="error-msg"></div>
+                <div class="toggle-mode">
+                    Don't have an account? <span onclick="switchAuthMode()">Create one</span>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <script src="/assets/console.js"></script>
+</body>
+</html>
