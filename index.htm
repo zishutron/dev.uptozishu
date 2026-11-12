@@ -1,0 +1,3106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <link rel="icon" type="image/png" href="/favicon.png">
+    <link rel="apple-touch-icon" href="/favicon.png">
+    <meta name="theme-color" content="#2563eb">
+    <title>ZishuTron Apps Console</title>
+    <!-- Font Awesome for Google icon -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --primary-light: #60a5fa;
+            --bg-dark: #0b0f19;
+            --bg-card: #111827;
+            --bg-input: #1f2937;
+            --text-light: #f9fafb;
+            --text-gray: #9ca3af;
+            --text-muted: #6b7280;
+            --border-color: #374151;
+            --gold: #f59e0b;
+            --green: #22c55e;
+            --red: #ef4444;
+            --yellow: #eab308;
+            --radius: 14px;
+            --radius-sm: 10px;
+            --shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            background: var(--bg-dark);
+            color: var(--text-light);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            overflow-x: hidden;
+            -webkit-tap-highlight-color: transparent;
+        }
+        button {
+            cursor: pointer;
+            border: none;
+            background: none;
+            color: inherit;
+            font-family: inherit;
+        }
+        img {
+            display: block;
+            max-width: 100%;
+        }
+        a {
+            color: inherit;
+            text-decoration: none;
+        }
+        ::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--bg-dark);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--primary);
+            border-radius: 10px;
+        }
+
+        .login-page {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-dark);
+            padding: 20px;
+        }
+        .login-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            padding: 40px 32px;
+            max-width: 400px;
+            width: 100%;
+            box-shadow: var(--shadow);
+        }
+        .login-box .logo {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+        .login-box .logo svg {
+            width: 56px;
+            height: 56px;
+            fill: var(--primary);
+        }
+        .login-box .logo h1 {
+            font-size: 22px;
+            font-weight: 700;
+            margin-top: 8px;
+        }
+        .login-box .logo p {
+            color: var(--text-gray);
+            font-size: 13px;
+        }
+        .login-box .form-group {
+            margin-bottom: 16px;
+        }
+        .login-box .form-group label {
+            display: block;
+            font-size: 13px;
+            color: var(--text-gray);
+            margin-bottom: 4px;
+            font-weight: 500;
+        }
+        .login-box .form-group input {
+            width: 100%;
+            padding: 12px 16px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border-color);
+            background: var(--bg-input);
+            color: var(--text-light);
+            font-size: 15px;
+            outline: none;
+            transition: var(--transition);
+        }
+        .login-box .form-group input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+        }
+        .login-box .btn-primary {
+            width: 100%;
+            padding: 14px;
+            background: var(--primary);
+            color: white;
+            border-radius: var(--radius-sm);
+            font-size: 16px;
+            font-weight: 600;
+            transition: var(--transition);
+        }
+        .login-box .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+        .login-box .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .login-box .error-msg {
+            color: var(--red);
+            font-size: 13px;
+            margin-top: 8px;
+            text-align: center;
+        }
+        .login-box .toggle-mode {
+            text-align: center;
+            margin-top: 16px;
+            font-size: 13px;
+            color: var(--text-gray);
+        }
+        .login-box .toggle-mode span {
+            color: var(--primary);
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .login-box .toggle-mode span:hover {
+            text-decoration: underline;
+        }
+        .google-btn {
+            width: 100%;
+            padding: 12px;
+            background: #fff;
+            color: #333;
+            border-radius: var(--radius-sm);
+            font-size: 15px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            border: 1px solid #ddd;
+            transition: var(--transition);
+            margin-bottom: 16px;
+        }
+        .google-btn:hover {
+            background: #f0f0f0;
+        }
+        .google-btn i {
+            font-size: 20px;
+            color: #4285F4;
+        }
+        .divider {
+            display: flex;
+            align-items: center;
+            color: var(--text-muted);
+            font-size: 12px;
+            margin: 12px 0 16px;
+        }
+        .divider::before,
+        .divider::after {
+            content: "";
+            flex: 1;
+            height: 1px;
+            background: var(--border-color);
+        }
+        .divider::before {
+            margin-right: 12px;
+        }
+        .divider::after {
+            margin-left: 12px;
+        }
+
+        .app-container {
+            display: none;
+            min-height: 100vh;
+        }
+        .app-container.show {
+            display: flex;
+        }
+
+        .sidebar {
+            width: 240px;
+            background: var(--bg-card);
+            border-right: 1px solid var(--border-color);
+            height: 100vh;
+            position: sticky;
+            top: 0;
+            overflow-y: auto;
+            flex-shrink: 0;
+            padding: 20px 0;
+            z-index: 50;
+        }
+        .sidebar .brand {
+            padding: 0 20px 20px;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 16px;
+        }
+        .sidebar .brand svg {
+            width: 32px;
+            height: 32px;
+            fill: var(--primary);
+        }
+        .sidebar .brand h2 {
+            font-size: 18px;
+            font-weight: 700;
+            margin-top: 4px;
+        }
+        .sidebar .brand span {
+            font-size: 11px;
+            color: var(--text-gray);
+        }
+        .sidebar .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 20px;
+            color: var(--text-gray);
+            font-size: 14px;
+            font-weight: 500;
+            transition: var(--transition);
+            cursor: pointer;
+            border-left: 3px solid transparent;
+        }
+        .sidebar .nav-item:hover {
+            background: var(--bg-input);
+            color: var(--text-light);
+        }
+        .sidebar .nav-item.active {
+            color: var(--primary);
+            border-left-color: var(--primary);
+            background: rgba(37, 99, 235, 0.08);
+        }
+        .sidebar .nav-item svg {
+            width: 20px;
+            height: 20px;
+            fill: currentColor;
+            flex-shrink: 0;
+        }
+        .sidebar .nav-item .badge {
+            margin-left: auto;
+            background: var(--primary);
+            color: white;
+            font-size: 10px;
+            padding: 2px 8px;
+            border-radius: 12px;
+        }
+        .sidebar .nav-item .badge.red {
+            background: var(--red);
+        }
+        .sidebar .bottom-nav {
+            margin-top: auto;
+            border-top: 1px solid var(--border-color);
+            padding-top: 12px;
+        }
+
+        .main-content {
+            flex: 1;
+            padding: 24px 32px;
+            overflow-y: auto;
+            max-height: 100vh;
+        }
+
+        .top-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .top-header .page-title {
+            font-size: 20px;
+            font-weight: 700;
+        }
+        .top-header .user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .top-header .user-info .avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 16px;
+            color: white;
+        }
+        .top-header .user-info .name {
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .top-header .user-info .email {
+            font-size: 12px;
+            color: var(--text-gray);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 16px 18px;
+            transition: var(--transition);
+        }
+        .stat-card:hover {
+            border-color: var(--primary);
+        }
+        .stat-card .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+        }
+        .stat-card .stat-label {
+            font-size: 12px;
+            color: var(--text-gray);
+            margin-top: 2px;
+        }
+        .stat-card .stat-icon {
+            float: right;
+            width: 28px;
+            height: 28px;
+            fill: var(--primary);
+            opacity: 0.4;
+        }
+
+        .welcome-banner {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            border-radius: var(--radius);
+            padding: 24px 28px;
+            margin-bottom: 24px;
+        }
+        .welcome-banner h2 {
+            font-size: 22px;
+            font-weight: 700;
+        }
+        .welcome-banner p {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 14px;
+            margin-top: 4px;
+        }
+
+        .quick-actions {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 24px;
+        }
+        .quick-actions .qa-btn {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 14px 24px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 500;
+            font-size: 14px;
+            transition: var(--transition);
+            cursor: pointer;
+        }
+        .quick-actions .qa-btn:hover {
+            border-color: var(--primary);
+            background: var(--bg-input);
+        }
+        .quick-actions .qa-btn svg {
+            width: 20px;
+            height: 20px;
+            fill: var(--primary);
+        }
+
+        .page-section {
+            display: none;
+        }
+        .page-section.active {
+            display: block;
+        }
+
+        .app-list-item {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            transition: var(--transition);
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .app-list-item:hover {
+            border-color: var(--primary);
+        }
+        .app-list-item .app-info {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .app-list-item .app-info img {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            object-fit: cover;
+            border: 1px solid var(--border-color);
+        }
+        .app-list-item .app-info .app-name {
+            font-weight: 600;
+            font-size: 15px;
+        }
+        .app-list-item .app-info .app-meta {
+            font-size: 12px;
+            color: var(--text-gray);
+        }
+        .app-list-item .app-status {
+            font-size: 12px;
+            font-weight: 500;
+            padding: 4px 12px;
+            border-radius: 20px;
+        }
+        .app-list-item .app-status.live {
+            background: rgba(34, 197, 94, 0.15);
+            color: var(--green);
+        }
+        .app-list-item .app-status.draft {
+            background: rgba(107, 114, 128, 0.15);
+            color: var(--text-gray);
+        }
+        .app-list-item .app-actions {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        .app-list-item .app-actions button {
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            transition: var(--transition);
+            border: 1px solid var(--border-color);
+        }
+        .app-list-item .app-actions button:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+        .app-list-item .app-actions button.danger:hover {
+            border-color: var(--red);
+            color: var(--red);
+        }
+
+        .upload-form {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            padding: 24px;
+            max-width: 800px;
+        }
+        .upload-form .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+        .upload-form .form-row.full {
+            grid-template-columns: 1fr;
+        }
+        .upload-form .form-group {
+            margin-bottom: 16px;
+        }
+        .upload-form .form-group label {
+            display: block;
+            font-size: 13px;
+            color: var(--text-gray);
+            margin-bottom: 4px;
+            font-weight: 500;
+        }
+        .upload-form .form-group label .required {
+            color: var(--red);
+        }
+        .upload-form .form-group input,
+        .upload-form .form-group textarea,
+        .upload-form .form-group select {
+            width: 100%;
+            padding: 10px 14px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border-color);
+            background: var(--bg-input);
+            color: var(--text-light);
+            font-size: 14px;
+            outline: none;
+            transition: var(--transition);
+        }
+        .upload-form .form-group input:focus,
+        .upload-form .form-group textarea:focus,
+        .upload-form .form-group select:focus {
+            border-color: var(--primary);
+        }
+        .upload-form .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+        .upload-form .form-group .preview-box {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        .upload-form .form-group .preview-box img {
+            width: 60px;
+            height: 60px;
+            border-radius: 8px;
+            object-fit: cover;
+            border: 1px solid var(--border-color);
+        }
+        .upload-form .form-group .preview-box img.banner-preview {
+            width: 120px;
+            height: 60px;
+        }
+        .upload-form .form-group .preview-box img.screenshot-preview {
+            width: 50px;
+            height: 90px;
+        }
+        .upload-form .step-indicators {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+            justify-content: center;
+        }
+        .upload-form .step-indicators .step {
+            padding: 6px 18px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 500;
+            background: var(--bg-input);
+            border: 1px solid var(--border-color);
+            color: var(--text-gray);
+        }
+        .upload-form .step-indicators .step.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+        .upload-form .step-indicators .step.done {
+            background: var(--green);
+            color: white;
+            border-color: var(--green);
+        }
+        .upload-form .step-content {
+            display: none;
+        }
+        .upload-form .step-content.active {
+            display: block;
+        }
+        .upload-form .step-nav {
+            display: flex;
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .review-filter {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+        .review-filter button {
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            background: var(--bg-input);
+            border: 1px solid var(--border-color);
+            color: var(--text-gray);
+            transition: var(--transition);
+        }
+        .review-filter button.active {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+        .review-item {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+        .review-item .rev-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .review-item .rev-head .rev-user {
+            font-weight: 600;
+        }
+        .review-item .rev-head .rev-stars {
+            color: var(--gold);
+        }
+        .review-item .rev-text {
+            color: var(--text-gray);
+            font-size: 14px;
+            margin: 6px 0;
+        }
+        .review-item .rev-reply {
+            margin-top: 8px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .review-item .rev-reply input {
+            flex: 1;
+            min-width: 150px;
+            padding: 8px 14px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border-color);
+            background: var(--bg-input);
+            color: var(--text-light);
+            font-size: 13px;
+            outline: none;
+        }
+        .review-item .rev-reply input:focus {
+            border-color: var(--primary);
+        }
+        .review-item .rev-reply button {
+            padding: 8px 20px;
+            background: var(--primary);
+            color: white;
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            font-weight: 500;
+        }
+        .review-item .dev-reply {
+            margin-top: 8px;
+            padding: 8px 12px;
+            background: rgba(37, 99, 235, 0.08);
+            border-left: 2px solid var(--primary);
+            border-radius: 6px;
+            font-size: 13px;
+            color: var(--text-gray);
+        }
+        .review-item .dev-reply strong {
+            color: var(--primary-light);
+        }
+
+        .notif-item {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 14px 18px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .notif-item .notif-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--bg-input);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .notif-item .notif-icon svg {
+            width: 16px;
+            height: 16px;
+            fill: var(--primary);
+        }
+        .notif-item .notif-text {
+            flex: 1;
+            font-size: 14px;
+        }
+        .notif-item .notif-time {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .profile-edit {
+            max-width: 500px;
+        }
+        .profile-edit .pfp-preview {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid var(--primary);
+            margin-bottom: 12px;
+        }
+        .profile-edit .pfp-preview-container {
+            position: relative;
+            display: inline-block;
+        }
+        .profile-edit .pfp-preview-container .pfp-upload-btn {
+            position: absolute;
+            bottom: 8px;
+            right: 0;
+            background: var(--primary);
+            border-radius: 50%;
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border: 2px solid var(--bg-card);
+        }
+        .profile-edit .pfp-preview-container .pfp-upload-btn svg {
+            width: 14px;
+            height: 14px;
+            fill: white;
+        }
+
+        .settings-group {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 20px;
+            margin-bottom: 16px;
+            max-width: 500px;
+        }
+        .settings-group h4 {
+            font-size: 15px;
+            margin-bottom: 12px;
+        }
+        .settings-group .setting-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .settings-group .setting-row:last-child {
+            border-bottom: none;
+        }
+        .settings-group .setting-row .label {
+            font-size: 14px;
+        }
+        .settings-group .setting-row .sub {
+            font-size: 12px;
+            color: var(--text-gray);
+        }
+        .settings-group .setting-row button {
+            padding: 6px 16px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 500;
+            border: 1px solid var(--border-color);
+            transition: var(--transition);
+        }
+        .settings-group .setting-row button:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+        .settings-group .setting-row button.danger:hover {
+            border-color: var(--red);
+            color: var(--red);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-gray);
+        }
+        .empty-state svg {
+            width: 64px;
+            height: 64px;
+            fill: var(--text-muted);
+            margin-bottom: 12px;
+        }
+        .empty-state h3 {
+            font-size: 18px;
+            color: var(--text-light);
+            margin-bottom: 4px;
+        }
+        .empty-state p {
+            font-size: 14px;
+        }
+        .empty-state .btn-primary {
+            display: inline-block;
+            width: auto;
+            padding: 10px 28px;
+            margin-top: 12px;
+            background: var(--primary);
+            color: white;
+            border-radius: var(--radius-sm);
+            font-weight: 600;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 9999;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            backdrop-filter: blur(8px);
+        }
+        .modal-overlay.open {
+            display: flex;
+        }
+        .modal-content {
+            max-width: 90%;
+            max-height: 85vh;
+            border-radius: var(--radius);
+            background: var(--bg-dark);
+            border: 1px solid var(--border-color);
+            padding: 24px;
+            overflow-y: auto;
+            width: 100%;
+            max-width: 700px;
+            animation: modalIn 0.25s ease;
+        }
+        @keyframes modalIn {
+            from {
+                transform: scale(0.95);
+                opacity: 0;
+            }
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+        .modal-close {
+            float: right;
+            background: var(--bg-input);
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: var(--text-gray);
+            transition: var(--transition);
+        }
+        .modal-close:hover {
+            background: var(--border-color);
+            color: white;
+        }
+
+        .loading-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(11, 15, 25, 0.95);
+            z-index: 9999;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 16px;
+        }
+        .loading-overlay.show {
+            display: flex;
+        }
+        .spinner {
+            width: 44px;
+            height: 44px;
+            border: 4px solid var(--border-color);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .hidden {
+            display: none !important;
+        }
+        .flex {
+            display: flex;
+        }
+        .gap-8 {
+            gap: 8px;
+        }
+        .gap-12 {
+            gap: 12px;
+        }
+        .mt-12 {
+            margin-top: 12px;
+        }
+        .mt-16 {
+            margin-top: 16px;
+        }
+        .mb-12 {
+            margin-bottom: 12px;
+        }
+        .text-center {
+            text-align: center;
+        }
+        .text-gray {
+            color: var(--text-gray);
+        }
+        .text-sm {
+            font-size: 13px;
+        }
+        .fw-600 {
+            font-weight: 600;
+        }
+        .flex-wrap {
+            flex-wrap: wrap;
+        }
+        .items-center {
+            align-items: center;
+        }
+        .w-full {
+            width: 100%;
+        }
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+            padding: 12px 24px;
+            border-radius: var(--radius-sm);
+            font-weight: 600;
+            font-size: 14px;
+            transition: var(--transition);
+            border: none;
+            cursor: pointer;
+        }
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-light);
+            padding: 10px 18px;
+            border-radius: var(--radius-sm);
+            font-weight: 500;
+            font-size: 13px;
+            transition: var(--transition);
+            cursor: pointer;
+        }
+        .btn-outline:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+        .btn-outline.danger:hover {
+            border-color: var(--red);
+            color: var(--red);
+        }
+
+        /* Edit modal - clean card style */
+        .edit-card {
+            background: var(--bg-card);
+            border-radius: var(--radius-sm);
+            padding: 20px;
+            border: 1px solid var(--border-color);
+        }
+        .edit-card .form-group {
+            margin-bottom: 14px;
+        }
+        .edit-card .form-group label {
+            display: block;
+            font-size: 13px;
+            color: var(--text-gray);
+            margin-bottom: 4px;
+            font-weight: 500;
+        }
+        .edit-card .form-group input,
+        .edit-card .form-group textarea,
+        .edit-card .form-group select {
+            width: 100%;
+            padding: 10px 14px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border-color);
+            background: var(--bg-input);
+            color: var(--text-light);
+            font-size: 14px;
+            outline: none;
+            transition: var(--transition);
+        }
+        .edit-card .form-group input:focus,
+        .edit-card .form-group textarea:focus,
+        .edit-card .form-group select:focus {
+            border-color: var(--primary);
+        }
+        .edit-card .form-group textarea {
+            resize: vertical;
+            min-height: 60px;
+        }
+        .edit-card .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+        }
+        .edit-card .form-row.full {
+            grid-template-columns: 1fr;
+        }
+        .edit-card .preview-box {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 6px;
+        }
+        .edit-card .preview-box img {
+            width: 60px;
+            height: 60px;
+            border-radius: 8px;
+            object-fit: cover;
+            border: 1px solid var(--border-color);
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 60px;
+                padding: 12px 0;
+            }
+            .sidebar .brand h2,
+            .sidebar .brand span,
+            .sidebar .nav-item span {
+                display: none;
+            }
+            .sidebar .nav-item {
+                padding: 12px 18px;
+                justify-content: center;
+            }
+            .sidebar .nav-item svg {
+                width: 22px;
+                height: 22px;
+            }
+            .sidebar .nav-item .badge {
+                display: none;
+            }
+            .main-content {
+                padding: 16px;
+            }
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .upload-form .form-row {
+                grid-template-columns: 1fr;
+            }
+            .app-list-item {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .app-list-item .app-actions {
+                width: 100%;
+                flex-wrap: wrap;
+            }
+            .top-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+            .quick-actions {
+                flex-direction: column;
+            }
+            .quick-actions .qa-btn {
+                justify-content: center;
+            }
+            .login-box {
+                padding: 28px 20px;
+                margin: 0 12px;
+            }
+            .edit-card .form-row {
+                grid-template-columns: 1fr;
+            }
+        }
+        @media (max-width: 480px) {
+            .stats-grid {
+                grid-template-columns: 1fr 1fr;
+                gap: 10px;
+            }
+            .stat-card {
+                padding: 12px 14px;
+            }
+            .stat-card .stat-value {
+                font-size: 18px;
+            }
+            .welcome-banner {
+                padding: 18px 20px;
+            }
+            .welcome-banner h2 {
+                font-size: 18px;
+            }
+            .modal-content {
+                padding: 16px;
+            }
+        }
+        .perm-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+        .perm-chip { border: 1px solid #cbd5e1; background: #f1f5f9; color: #334155; border-radius: 999px; padding: 5px 12px; font-size: 13px; cursor: pointer; }
+        .perm-chip.on { background: #2563eb; border-color: #2563eb; color: #fff; }
+        .perm-hint { display: block; margin-top: 4px; color: #64748b; font-size: 12px; }
+    </style>
+</head>
+<body>
+
+    <!-- LOADING -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner"></div>
+        <div id="loadingText" style="color:var(--text-gray);font-size:14px;">Loading...</div>
+    </div>
+
+    <!-- LOGIN PAGE -->
+    <div class="login-page" id="loginPage">
+        <div class="login-box">
+            <div class="logo">
+                <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+                <h1>ZishuTron Apps Console</h1>
+                <p>Developer Dashboard</p>
+            </div>
+            <!-- Google Login -->
+            <button class="google-btn" id="googleLoginBtn" onclick="signInWithGoogle()">
+                <i class="fab fa-google"></i> Sign in with Google
+            </button>
+            <div class="divider">or</div>
+            <form id="loginForm" onsubmit="handleAuth(event)">
+                <div id="loginMessage" class="error-msg"></div>
+                <div class="form-group">
+                    <label for="loginEmail">Email Address</label>
+                    <input type="email" id="loginEmail" placeholder="developer@example.com" required />
+                </div>
+                <div class="form-group">
+                    <label for="loginPassword">Password</label>
+                    <input type="password" id="loginPassword" placeholder="••••••••" required minlength="6" />
+                </div>
+                <button type="submit" class="btn-primary" id="loginBtn">Sign In</button>
+                <div id="loginError" class="error-msg"></div>
+                <div class="toggle-mode">
+                    Don't have an account? <span onclick="switchAuthMode()">Create one</span>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MAIN APP -->
+    <div class="app-container" id="appContainer">
+
+        <!-- SIDEBAR -->
+        <aside class="sidebar" id="sidebar">
+            <div class="brand">
+                <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+                <h2>ZishuTron Apps</h2>
+                <span>Developer Console</span>
+            </div>
+
+            <div class="nav-item active" data-page="dashboard" onclick="switchPage('dashboard')">
+                <svg viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
+                <span>Dashboard</span>
+            </div>
+            <div class="nav-item" data-page="myapps" onclick="switchPage('myapps')">
+                <svg viewBox="0 0 24 24"><path d="M4 6h16v2H4V6zm0 5h16v2H4v-2zm0 5h10v2H4v-2z"/></svg>
+                <span>My Apps</span>
+                <span class="badge" id="appCountBadge">0</span>
+            </div>
+            <div class="nav-item" data-page="upload" onclick="switchPage('upload')">
+                <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+                <span>Upload App</span>
+            </div>
+            <div class="nav-item" data-page="analytics" onclick="switchPage('analytics')">
+                <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg>
+                <span>Analytics</span>
+            </div>
+            <div class="nav-item" data-page="reviews" onclick="switchPage('reviews')">
+                <svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                <span>Reviews</span>
+                <span class="badge red" id="reviewBadge">0</span>
+            </div>
+            <div class="nav-item" data-page="notifications" onclick="switchPage('notifications')">
+                <svg viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2zm-2 1H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z"/></svg>
+                <span>Notifications</span>
+                <span class="badge red" id="notifBadge">0</span>
+            </div>
+            <div class="nav-item" data-page="profile" onclick="switchPage('profile')">
+                <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>
+                <span>Profile</span>
+            </div>
+            <div class="nav-item" data-page="settings" onclick="switchPage('settings')">
+                <svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+                <span>Settings</span>
+            </div>
+
+            <div class="bottom-nav">
+                <div class="nav-item" onclick="logoutUser()" style="color:var(--red);">
+                    <svg viewBox="0 0 24 24" style="fill:var(--red);"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
+                    <span>Logout</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <main class="main-content">
+
+            <!-- TOP HEADER -->
+            <div class="top-header">
+                <div class="page-title" id="pageTitle">Dashboard</div>
+                <div class="user-info">
+                    <div>
+                        <div class="name" id="userDisplayName">Developer</div>
+                        <div class="email" id="userDisplayEmail">user@email.com</div>
+                    </div>
+                    <div class="avatar" id="userAvatar">D</div>
+                </div>
+            </div>
+
+            <!-- DASHBOARD -->
+            <div class="page-section active" id="section-dashboard">
+                <div class="welcome-banner">
+                    <h2 id="welcomeMsg">Welcome Back, Developer</h2>
+                    <p>Manage your apps and track performance from one place.</p>
+                </div>
+
+                <div class="quick-actions">
+                    <button class="qa-btn" onclick="switchPage('upload')">
+                        <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+                        Upload New App
+                    </button>
+                    <button class="qa-btn" onclick="switchPage('analytics')">
+                        <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg>
+                        Analytics
+                    </button>
+                    <button class="qa-btn" onclick="switchPage('myapps')">
+                        <svg viewBox="0 0 24 24"><path d="M4 6h16v2H4V6zm0 5h16v2H4v-2zm0 5h10v2H4v-2z"/></svg>
+                        My Apps
+                    </button>
+                </div>
+
+                <div class="stats-grid" id="dashboardStats">
+                    <div class="stat-card">
+                        <svg class="stat-icon" viewBox="0 0 24 24"><path d="M4 6h16v2H4V6zm0 5h16v2H4v-2zm0 5h10v2H4v-2z"/></svg>
+                        <div class="stat-value" id="statTotalApps">0</div>
+                        <div class="stat-label">Total Apps</div>
+                    </div>
+                    <div class="stat-card">
+                        <svg class="stat-icon" viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+                        <div class="stat-value" id="statDownloads">0</div>
+                        <div class="stat-label">Total Downloads</div>
+                    </div>
+                    <div class="stat-card">
+                        <svg class="stat-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+                        <div class="stat-value" id="statViews">0</div>
+                        <div class="stat-label">Total Views</div>
+                    </div>
+                    <div class="stat-card">
+                        <svg class="stat-icon" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                        <div class="stat-value" id="statRating">0.0</div>
+                        <div class="stat-label">Average Rating</div>
+                    </div>
+                    <div class="stat-card">
+                        <svg class="stat-icon" viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
+                        <div class="stat-value" id="statReviewsCount">0</div>
+                        <div class="stat-label">Total Reviews</div>
+                    </div>
+                    <div class="stat-card">
+                        <svg class="stat-icon" viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+                        <div class="stat-value" id="statMonthlyDownloads">0</div>
+                        <div class="stat-label">Monthly Downloads</div>
+                    </div>
+                    <div class="stat-card">
+                        <svg class="stat-icon" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                        <div class="stat-value" id="statLiveApps">0</div>
+                        <div class="stat-label">Live Apps</div>
+                    </div>
+                </div>
+
+                <!-- Charts placeholder -->
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:8px;">
+                    <div style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius-sm);padding:20px;">
+                        <h4 style="margin-bottom:12px;">Downloads (7 Days)</h4>
+                        <div style="height:120px;display:flex;align-items:flex-end;gap:8px;padding-top:8px;">
+                            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
+                                <div style="width:100%;background:var(--primary);border-radius:4px;height:0%;transition:height 0.5s;" id="chartDay1"></div>
+                                <span style="font-size:10px;color:var(--text-gray);">Mon</span>
+                            </div>
+                            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
+                                <div style="width:100%;background:var(--primary);border-radius:4px;height:0%;transition:height 0.5s;" id="chartDay2"></div>
+                                <span style="font-size:10px;color:var(--text-gray);">Tue</span>
+                            </div>
+                            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
+                                <div style="width:100%;background:var(--primary);border-radius:4px;height:0%;transition:height 0.5s;" id="chartDay3"></div>
+                                <span style="font-size:10px;color:var(--text-gray);">Wed</span>
+                            </div>
+                            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
+                                <div style="width:100%;background:var(--primary);border-radius:4px;height:0%;transition:height 0.5s;" id="chartDay4"></div>
+                                <span style="font-size:10px;color:var(--text-gray);">Thu</span>
+                            </div>
+                            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
+                                <div style="width:100%;background:var(--primary);border-radius:4px;height:0%;transition:height 0.5s;" id="chartDay5"></div>
+                                <span style="font-size:10px;color:var(--text-gray);">Fri</span>
+                            </div>
+                            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
+                                <div style="width:100%;background:var(--primary);border-radius:4px;height:0%;transition:height 0.5s;" id="chartDay6"></div>
+                                <span style="font-size:10px;color:var(--text-gray);">Sat</span>
+                            </div>
+                            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
+                                <div style="width:100%;background:var(--primary);border-radius:4px;height:0%;transition:height 0.5s;" id="chartDay7"></div>
+                                <span style="font-size:10px;color:var(--text-gray);">Sun</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius-sm);padding:20px;">
+                        <h4 style="margin-bottom:12px;">Top Downloaded Apps</h4>
+                        <div id="topAppsList" style="font-size:13px;color:var(--text-gray);"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MY APPS -->
+            <div class="page-section" id="section-myapps">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
+                    <h3>My Applications</h3>
+                    <button class="btn-primary" onclick="switchPage('upload')" style="width:auto;padding:8px 20px;font-size:13px;">
+                        <svg viewBox="0 0 24 24" style="width:16px;height:16px;fill:white;"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+                        New App
+                    </button>
+                </div>
+                <div id="myAppsList"></div>
+            </div>
+
+            <!-- UPLOAD -->
+            <div class="page-section" id="section-upload">
+                <h3 style="margin-bottom:16px;">Upload New Application</h3>
+                <form class="upload-form" id="uploadForm" onsubmit="handleUpload(event)">
+                    <div class="step-indicators">
+                        <span class="step active" id="step1Label">Step 1</span>
+                        <span class="step" id="step2Label">Step 2</span>
+                        <span class="step" id="step3Label">Step 3</span>
+                        <span class="step" id="step4Label">Step 4</span>
+                    </div>
+
+                    <!-- Step 1 -->
+                    <div class="step-content active" id="step1">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>App Name <span class="required">*</span></label>
+                                <input type="text" id="upName" required placeholder="My Awesome App" />
+                            </div>
+                            <div class="form-group">
+                                <label>Category <span class="required">*</span></label>
+                                <select id="upCategory" required>
+                                    <option value="">Select Category</option>
+                                    <option>Games</option><option>Social</option><option>AI</option>
+                                    <option>Entertainment</option><option>Tools</option><option>Shopping</option>
+                                    <option>Music</option><option>Education</option><option>Health</option>
+                                    <option>Photography</option><option>Finance</option><option>Travel</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Package Name <span class="required">*</span></label>
+                                <input type="text" id="upPackage" required placeholder="com.example.app" />
+                            </div>
+                            <div class="form-group">
+                                <label>Short Description <span class="required">*</span></label>
+                                <input type="text" id="upShortDesc" required placeholder="Brief description..." />
+                            </div>
+                        </div>
+                        <div class="step-nav">
+                            <button type="button" class="btn-primary" onclick="nextStep(2)">Next Step</button>
+                        </div>
+                    </div>
+
+                    <!-- Step 2 -->
+                    <div class="step-content" id="step2">
+                        <div class="form-row full">
+                            <div class="form-group">
+                                <label>Full Description <span class="required">*</span></label>
+                                <textarea id="upLongDesc" rows="4" required placeholder="Detailed description..."></textarea>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Tags (comma separated)</label>
+                                <input type="text" id="upTags" placeholder="game, action, multiplayer" />
+                            </div>
+                            <div class="form-group">
+                                <label>Support Email</label>
+                                <input type="email" id="upSupportEmail" placeholder="support@example.com" />
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Privacy Policy URL</label>
+                                <input type="url" id="upPrivacy" placeholder="https://example.com/privacy" />
+                            </div>
+                            <div class="form-group">
+                                <label>Website</label>
+                                <input type="url" id="upWebsite" placeholder="https://example.com" />
+                            </div>
+                        </div>
+                        <div class="step-nav">
+                            <button type="button" class="btn-outline" onclick="prevStep(1)">Previous</button>
+                            <button type="button" class="btn-primary" onclick="nextStep(3)">Next Step</button>
+                        </div>
+                    </div>
+
+                    <!-- Step 3 -->
+                    <div class="step-content" id="step3">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>APK Download URL <span class="required">*</span></label>
+                                <input type="url" id="upApkUrl" required placeholder="https://example.com/app.apk" />
+                            </div>
+                            <div class="form-group">
+                                <label>Version <span class="required">*</span></label>
+                                <input type="text" id="upVersion" required placeholder="v1.0.0" />
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>APK Size (MB)</label>
+                                <input type="text" id="upSize" placeholder="42 MB" />
+                            </div>
+                            <div class="form-group">
+                                <label>App Icon <span class="required">*</span></label>
+                                <input type="file" id="upIcon" accept="image/*" required onchange="previewUploadImage(this, 'iconPreview')" />
+                                <div class="preview-box" id="iconPreview"></div>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Feature Banner</label>
+                                <input type="file" id="upBanner" accept="image/*" onchange="previewUploadImage(this, 'bannerPreview')" />
+                                <div class="preview-box" id="bannerPreview"></div>
+                            </div>
+                            <div class="form-group">
+                                <label>Screenshots (select multiple)</label>
+                                <input type="file" id="upScreenshots" accept="image/*" multiple onchange="previewUploadScreens(this)" />
+                                <div class="preview-box" id="screensPreview"></div>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>YouTube Video ID (optional)</label>
+                                <input type="text" id="upYoutube" placeholder="dQw4w9WgXcQ" />
+                            </div>
+                            <div class="form-group">
+                                <label>Minimum Android</label>
+                                <input type="text" id="upMinAndroid" placeholder="5.0" />
+                            </div>
+                        </div>
+                        <div class="form-row full">
+                            <div class="form-group">
+                                <label>App Permissions</label>
+                                <div class="perm-chips" id="upPermChips"></div>
+                                <textarea id="upPermissions" rows="2" placeholder="Internet, Storage, Camera" oninput="renderPermChips('up')"></textarea>
+                                <small class="perm-hint">Tap the permissions your app asks for, or type your own (comma separated). Shown to users on the app page.</small>
+                            </div>
+                        </div>
+                        <div class="step-nav">
+                            <button type="button" class="btn-outline" onclick="prevStep(2)">Previous</button>
+                            <button type="button" class="btn-primary" onclick="nextStep(4)">Next Step</button>
+                        </div>
+                    </div>
+
+                    <!-- Step 4 -->
+                    <div class="step-content" id="step4">
+                        <div class="form-row full">
+                            <div class="form-group">
+                                <label>Release Notes (What's New)</label>
+                                <textarea id="upWhatsNew" rows="4" placeholder="Version 2.0&#10;Added Voice Call&#10;Bug Fixed&#10;Better UI"></textarea>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Publish Status</label>
+                                <select id="upStatus">
+                                    <option value="live">Publish Live</option>
+                                    <option value="draft">Save as Draft</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="step-nav">
+                            <button type="button" class="btn-outline" onclick="prevStep(3)">Previous</button>
+                            <button type="submit" class="btn-primary">
+                                <span id="uploadBtnText">Publish App</span>
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- ANALYTICS -->
+            <div class="page-section" id="section-analytics">
+                <h3 style="margin-bottom:16px;">Analytics</h3>
+                <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;">
+                    <select id="anaAppSelect" onchange="loadAppAnalytics()" style="background:var(--bg-input);border:1px solid var(--border-color);border-radius:8px;padding:8px 14px;color:var(--text-light);font-size:14px;">
+                        <option value="">Select App</option>
+                    </select>
+                </div>
+                <div id="analyticsContainer">
+                    <div class="empty-state">
+                        <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg>
+                        <h3>Select an App</h3>
+                        <p>Choose an app from the dropdown to see analytics.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- REVIEWS -->
+            <div class="page-section" id="section-reviews">
+                <h3 style="margin-bottom:12px;">App Reviews</h3>
+                <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px;">
+                    <select id="reviewAppSelect" onchange="loadReviews()" style="background:var(--bg-input);border:1px solid var(--border-color);border-radius:8px;padding:8px 14px;color:var(--text-light);font-size:14px;">
+                        <option value="">Select App</option>
+                    </select>
+                </div>
+                <div class="review-filter" id="reviewFilter">
+                    <button class="active" data-star="all" onclick="filterReviews('all')">All</button>
+                    <button data-star="5" onclick="filterReviews(5)">5 ★</button>
+                    <button data-star="4" onclick="filterReviews(4)">4 ★</button>
+                    <button data-star="3" onclick="filterReviews(3)">3 ★</button>
+                    <button data-star="2" onclick="filterReviews(2)">2 ★</button>
+                    <button data-star="1" onclick="filterReviews(1)">1 ★</button>
+                </div>
+                <div id="reviewsList"></div>
+            </div>
+
+            <!-- NOTIFICATIONS -->
+            <div class="page-section" id="section-notifications">
+                <h3 style="margin-bottom:16px;">Notifications</h3>
+                <div id="notificationsList"></div>
+            </div>
+
+            <!-- PROFILE -->
+            <div class="page-section" id="section-profile">
+                <h3 style="margin-bottom:16px;">Developer Profile</h3>
+                <div class="profile-edit">
+                    <div class="form-group">
+                        <label>Profile Picture</label>
+                        <div class="pfp-preview-container">
+                            <img src="https://img.icons8.com/clouds/200/user.png" class="pfp-preview" id="profilePfpPreview" />
+                            <label class="pfp-upload-btn" for="pfpUpload">
+                                <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+                            </label>
+                            <input type="file" id="pfpUpload" accept="image/*" style="display:none;" onchange="previewProfilePfp(this)" />
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Developer Name</label>
+                        <input type="text" id="profName" placeholder="Your name" />
+                    </div>
+                    <div class="form-group">
+                        <label>Bio</label>
+                        <textarea id="profBio" rows="3" placeholder="Tell us about yourself..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Website</label>
+                        <input type="url" id="profWebsite" placeholder="https://example.com" />
+                    </div>
+                    <div class="form-group">
+                        <label>GitHub</label>
+                        <input type="text" id="profGithub" placeholder="username" />
+                    </div>
+                    <div class="form-group">
+                        <label>Support Email</label>
+                        <input type="email" id="profEmail" placeholder="support@example.com" />
+                    </div>
+                    <div class="form-group">
+                        <label>Country</label>
+                        <input type="text" id="profCountry" placeholder="United States" />
+                    </div>
+                    <button class="btn-primary" onclick="saveProfile()">Save Profile</button>
+                </div>
+            </div>
+
+            <!-- SETTINGS -->
+            <div class="page-section" id="section-settings">
+                <h3 style="margin-bottom:16px;">Settings</h3>
+                <div class="settings-group">
+                    <h4>Account</h4>
+                    <div class="setting-row">
+                        <div><div class="label">Change Password</div><div class="sub">Update your password</div></div>
+                        <button onclick="changePassword()">Change</button>
+                    </div>
+                    <div class="setting-row">
+                        <div><div class="label">Change Email</div><div class="sub">Update your email address</div></div>
+                        <button onclick="changeEmail()">Change</button>
+                    </div>
+                    <div class="setting-row">
+                        <div><div class="label">Delete Account</div><div class="sub">Permanently delete your account</div></div>
+                        <button class="danger" onclick="deleteAccount()">Delete</button>
+                    </div>
+                </div>
+                <div class="settings-group">
+                    <h4>Preferences</h4>
+                    <div class="setting-row">
+                        <div><div class="label">Dark Mode</div><div class="sub">Toggle dark/light theme</div></div>
+                        <button onclick="toggleThemeSettings()">Toggle</button>
+                    </div>
+                    <div class="setting-row">
+                        <div><div class="label">Language</div><div class="sub">Select your preferred language</div></div>
+                        <button onclick="changeLanguage()">Change</button>
+                    </div>
+                </div>
+                <div class="settings-group">
+                    <h4>Drafts</h4>
+                    <div class="setting-row">
+                        <div><div class="label">Saved Drafts</div><div class="sub">Continue where you left off</div></div>
+                        <button onclick="viewDrafts()">View Drafts</button>
+                    </div>
+                </div>
+                <div class="settings-group">
+                    <h4>Activity Log</h4>
+                    <div class="setting-row">
+                        <div><div class="label">Recent Activity</div><div class="sub">Track your actions</div></div>
+                        <button onclick="viewActivityLog()">View Log</button>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- EDIT MODAL - Clean & Streamlined, only file uploads -->
+    <div class="modal-overlay" id="editModal" onclick="if(event.target===this)closeEditModal()">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeEditModal()">✕</button>
+            <h4 style="margin-bottom:16px;">Edit App</h4>
+            <div class="edit-card">
+                <form id="editForm" onsubmit="saveFullEdit(event)">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>App Name <span class="required">*</span></label>
+                            <input type="text" id="editName" required />
+                        </div>
+                        <div class="form-group">
+                            <label>Category <span class="required">*</span></label>
+                            <select id="editCategory">
+                                <option>Games</option><option>Social</option><option>AI</option>
+                                <option>Entertainment</option><option>Tools</option><option>Shopping</option>
+                                <option>Music</option><option>Education</option><option>Health</option>
+                                <option>Photography</option><option>Finance</option><option>Travel</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Package Name</label>
+                            <input type="text" id="editPackage" />
+                        </div>
+                        <div class="form-group">
+                            <label>Version</label>
+                            <input type="text" id="editVersion" />
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Short Description <span class="required">*</span></label>
+                        <input type="text" id="editShortDesc" required />
+                    </div>
+                    <div class="form-group">
+                        <label>Full Description <span class="required">*</span></label>
+                        <textarea id="editLongDesc" rows="4" required></textarea>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>APK URL</label>
+                            <input type="url" id="editApkUrl" placeholder="https://example.com/app.apk" />
+                        </div>
+                        <div class="form-group">
+                            <label>APK Size (MB)</label>
+                            <input type="text" id="editSize" placeholder="42 MB" />
+                        </div>
+                    </div>
+                    <!-- Icon: only file upload -->
+                    <div class="form-group">
+                        <label>App Icon <span class="required">*</span></label>
+                        <input type="file" id="editIconFile" accept="image/*" onchange="previewEditIcon(this)" />
+                        <div class="preview-box" id="editIconPreview"></div>
+                    </div>
+                    <!-- Banner: only file upload -->
+                    <div class="form-group">
+                        <label>Feature Banner</label>
+                        <input type="file" id="editBannerFile" accept="image/*" onchange="previewEditBanner(this)" />
+                        <div class="preview-box" id="editBannerPreview"></div>
+                    </div>
+                    <!-- Screenshots: only file upload -->
+                    <div class="form-group">
+                        <label>Screenshots (select multiple)</label>
+                        <input type="file" id="editScreenshots" accept="image/*" multiple onchange="previewEditScreens(this)" />
+                        <div class="preview-box" id="editScreensPreview"></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Tags (comma separated)</label>
+                            <input type="text" id="editTags" />
+                        </div>
+                        <div class="form-group">
+                            <label>Support Email</label>
+                            <input type="email" id="editSupportEmail" />
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Privacy Policy URL</label>
+                            <input type="url" id="editPrivacy" />
+                        </div>
+                        <div class="form-group">
+                            <label>Website</label>
+                            <input type="url" id="editWebsite" />
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>YouTube Video ID</label>
+                            <input type="text" id="editYoutube" placeholder="dQw4w9WgXcQ" />
+                        </div>
+                        <div class="form-group">
+                            <label>Minimum Android</label>
+                            <input type="text" id="editMinAndroid" placeholder="5.0" />
+                        </div>
+                    </div>
+                    <div class="form-row full">
+                            <div class="form-group">
+                                <label>App Permissions</label>
+                                <div class="perm-chips" id="editPermChips"></div>
+                                <textarea id="editPermissions" rows="2" placeholder="Internet, Storage, Camera" oninput="renderPermChips('edit')"></textarea>
+                                <small class="perm-hint">Tap the permissions your app asks for, or type your own (comma separated). Shown to users on the app page.</small>
+                            </div>
+                        </div>
+                    <div class="form-group">
+                        <label>What's New</label>
+                        <textarea id="editWhatsNew" rows="4" placeholder="Bug fixes, new features..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Status</label>
+                        <select id="editStatus">
+                            <option value="live">Live</option>
+                            <option value="draft">Draft</option>
+                        </select>
+                    </div>
+                    <input type="hidden" id="editAppId" />
+                    <button type="submit" class="btn-primary">Save Changes</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- UPDATE MODAL -->
+    <div class="modal-overlay" id="updateModal" onclick="if(event.target===this)closeUpdateModal()">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeUpdateModal()">✕</button>
+            <h4 style="margin-bottom:16px;">Update App</h4>
+            <form id="updateForm" onsubmit="submitUpdate(event)">
+                <div class="form-group">
+                    <label>New Version <span class="required">*</span></label>
+                    <input type="text" id="updateVersion" required placeholder="v2.0.0" />
+                </div>
+                <div class="form-group">
+                    <label>APK URL <span class="required">*</span></label>
+                    <input type="url" id="updateApkUrl" required placeholder="https://example.com/app-v2.apk" />
+                </div>
+                <div class="form-group">
+                    <label>What's New <span class="required">*</span></label>
+                    <textarea id="updateWhatsNew" rows="4" required placeholder="Bug fixes&#10;New features&#10;Performance improvements"></textarea>
+                </div>
+                <input type="hidden" id="updateAppId" />
+                <button type="submit" class="btn-primary">Submit Update</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- FIREBASE -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+
+    <script>
+        // ============================================
+        // FIREBASE CONFIG
+        // ============================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyDCOq720_5pxOsUYXovvi4DaUsryv1oPeA",
+            authDomain: "stardust-store.firebaseapp.com",
+            databaseURL: "https://stardust-store-default-rtdb.firebaseio.com",
+            projectId: "stardust-store",
+            storageBucket: "stardust-store.firebasestorage.app",
+            messagingSenderId: "979834482722",
+            appId: "1:979834482722:web:dabbc453543b7e03c91a7b",
+            measurementId: "G-YKYR514S87"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.database();
+
+        // ============================================
+        // IMGBB API KEY
+        // ============================================
+        const IMGBB_KEY = "550a3bcd47c1b0a86a9f2ba7a41770b6";
+
+        // ============================================
+        // STATE
+        // ============================================
+        let currentUser = null;
+        let allApps = [];
+        let allReviews = {};
+        let allNotifications = [];
+        let currentReviewFilter = 'all';
+        let currentPage = 'dashboard';
+        let isLoginMode = true;
+        let currentStep = 1;
+        let editAppId = null;
+        let updateAppId = null;
+        let drafts = JSON.parse(localStorage.getItem('stardust_drafts') || '{}');
+        let activityLog = JSON.parse(localStorage.getItem('stardust_activity_log') || '[]');
+
+        // ============================================
+        // DOM REFS
+        // ============================================
+        const $ = id => document.getElementById(id);
+        const loginPage = $('loginPage');
+        const appContainer = $('appContainer');
+        const loadingOverlay = $('loadingOverlay');
+        const loadingText = $('loadingText');
+
+        // ============================================
+        // LOADING
+        // ============================================
+        function showLoading(show, text = 'Loading...') {
+            if (show) { loadingText.textContent = text;
+                loadingOverlay.classList.add('show'); } else loadingOverlay.classList.remove('show');
+        }
+
+        // ============================================
+        // AUTH
+        // ============================================
+        function switchAuthMode() {
+            isLoginMode = !isLoginMode;
+            const btn = $('loginBtn');
+            if (isLoginMode) {
+                btn.textContent = 'Sign In';
+                document.querySelector('.toggle-mode').innerHTML =
+                    `Don't have an account? <span onclick="switchAuthMode()">Create one</span>`;
+            } else {
+                btn.textContent = 'Create Account';
+                document.querySelector('.toggle-mode').innerHTML =
+                    `Already have an account? <span onclick="switchAuthMode()">Sign in</span>`;
+            }
+            $('loginError').textContent = '';
+        }
+
+        function handleAuth(e) {
+            e.preventDefault();
+            const email = $('loginEmail').value.trim();
+            const password = $('loginPassword').value;
+            const btn = $('loginBtn');
+            const errorEl = $('loginError');
+
+            if (!email || !password) { errorEl.textContent = 'Please fill all fields.'; return; }
+            if (password.length < 6) { errorEl.textContent = 'Password must be at least 6 characters.'; return; }
+
+            btn.disabled = true;
+            btn.textContent = isLoginMode ? 'Signing in...' : 'Creating account...';
+            errorEl.textContent = '';
+
+            // Clear any previous auth state to avoid conflicts
+            const authFunc = isLoginMode ?
+                auth.signInWithEmailAndPassword(email, password) :
+                auth.createUserWithEmailAndPassword(email, password);
+
+            authFunc
+                .then(result => {
+                    btn.disabled = false;
+                    btn.textContent = isLoginMode ? 'Sign In' : 'Create Account';
+                    initApp(result.user);
+                })
+                .catch(err => {
+                    btn.disabled = false;
+                    btn.textContent = isLoginMode ? 'Sign In' : 'Create Account';
+                    errorEl.textContent = err.message;
+                });
+        }
+
+        // Google Sign-In
+        function signInWithGoogle() {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            auth.signInWithPopup(provider)
+                .then(result => {
+                    initApp(result.user);
+                })
+                .catch(err => {
+                    alert('Google Sign-In failed: ' + err.message);
+                });
+        }
+
+        // ============================================
+        // INIT APP
+        // ============================================
+        function initApp(user) {
+            currentUser = user;
+            loginPage.style.display = 'none';
+            appContainer.classList.add('show');
+
+            const name = user.displayName || user.email.split('@')[0] || 'Developer';
+            $('userDisplayName').textContent = name;
+            $('userDisplayEmail').textContent = user.email;
+            $('userAvatar').textContent = name.charAt(0).toUpperCase();
+            $('welcomeMsg').textContent = `Welcome Back, ${name}`;
+
+            // Load data
+            loadApps();
+            loadNotifications();
+            loadReviews();
+
+            switchPage('dashboard');
+            localStorage.setItem('stardust_uid', user.uid);
+            showLoading(false);
+        }
+
+        // ============================================
+        // AUTH STATE LISTENER
+        // ============================================
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                if (!appContainer.classList.contains('show')) {
+                    initApp(user);
+                }
+            } else {
+                loginPage.style.display = 'flex';
+                appContainer.classList.remove('show');
+                localStorage.removeItem('stardust_uid');
+                showLoading(false);
+            }
+        });
+
+        // ============================================
+        // THEME - Persistent
+        // ============================================
+        let darkMode = true;
+
+        function applyTheme(dark) {
+            const root = document.documentElement;
+            if (dark) {
+                root.style.setProperty('--bg-dark', '#0b0f19');
+                root.style.setProperty('--bg-card', '#111827');
+                root.style.setProperty('--bg-input', '#1f2937');
+                root.style.setProperty('--text-light', '#f9fafb');
+                root.style.setProperty('--text-gray', '#9ca3af');
+                root.style.setProperty('--border-color', '#374151');
+            } else {
+                root.style.setProperty('--bg-dark', '#f1f5f9');
+                root.style.setProperty('--bg-card', '#ffffff');
+                root.style.setProperty('--bg-input', '#e2e8f0');
+                root.style.setProperty('--text-light', '#0f172a');
+                root.style.setProperty('--text-gray', '#475569');
+                root.style.setProperty('--border-color', '#cbd5e1');
+            }
+            localStorage.setItem('stardust_dev_theme', dark ? 'dark' : 'light');
+            darkMode = dark;
+        }
+
+        const savedTheme = localStorage.getItem('stardust_dev_theme');
+        if (savedTheme === 'light') {
+            applyTheme(false);
+        } else {
+            applyTheme(true);
+        }
+
+        function toggleThemeSettings() {
+            applyTheme(!darkMode);
+        }
+
+        // ============================================
+        // LOGOUT
+        // ============================================
+        function logoutUser() {
+            if (confirm('Are you sure you want to logout?')) {
+                auth.signOut().then(() => {
+                    localStorage.removeItem('stardust_uid');
+                    loginPage.style.display = 'flex';
+                    appContainer.classList.remove('show');
+                });
+            }
+        }
+
+        // ============================================
+        // NAVIGATION
+        // ============================================
+        function switchPage(page) {
+            currentPage = page;
+            document.querySelectorAll('.sidebar .nav-item').forEach(el => {
+                el.classList.toggle('active', el.dataset.page === page);
+            });
+            document.querySelectorAll('.page-section').forEach(el => {
+                el.classList.toggle('active', el.id === `section-${page}`);
+            });
+            const titles = {
+                dashboard: 'Dashboard',
+                myapps: 'My Apps',
+                upload: 'Upload App',
+                analytics: 'Analytics',
+                reviews: 'Reviews',
+                notifications: 'Notifications',
+                profile: 'Developer Profile',
+                settings: 'Settings'
+            };
+            $('pageTitle').textContent = titles[page] || page;
+
+            if (page === 'myapps') renderMyApps();
+            if (page === 'reviews') loadReviews();
+            if (page === 'notifications') renderNotifications();
+            if (page === 'analytics') populateAnalyticsSelect();
+            if (page === 'profile') loadProfile();
+            if (page === 'dashboard') updateDashboard();
+        }
+
+        // ============================================
+        // LOAD APPS
+        // ============================================
+        // Keep each app's rating + review count equal to its real reviews (the old default was a fake 4.5)
+        const ratingSynced = {};
+        function syncRatings() {
+            allApps.forEach(app => {
+                if (ratingSynced[app.id]) return;
+                ratingSynced[app.id] = true;
+                db.ref('reviews/' + app.id).once('value').then(snap => {
+                    let sum = 0, n = 0;
+                    snap.forEach(c => { const r = c.val(); if (r && r.text) { sum += Math.min(5, Math.max(1, Math.round(+r.rating || 5))); n++; } });
+                    const avg = n ? Math.round((sum / n) * 10) / 10 : 0;
+                    if (avg !== (+app.rating || 0) || n !== (app.reviewCount || 0)) {
+                        return db.ref('apps/' + app.id).update({ rating: avg, reviewCount: n });
+                    }
+                }).catch(() => { ratingSynced[app.id] = false; });
+            });
+        }
+
+        function loadApps() {
+            showLoading(true, 'Loading apps...');
+            db.ref('apps').on('value', snapshot => {
+                const data = snapshot.val();
+                allApps = data ? Object.keys(data).map(key => ({ id: key, ...data[key] })) : [];
+                if (currentUser) {
+                    allApps = allApps.filter(a => a.developerUid === currentUser.uid);
+                }
+                syncRatings();
+                updateDashboard();
+                if (currentPage === 'myapps') renderMyApps();
+                if (currentPage === 'analytics') populateAnalyticsSelect();
+                if (currentPage === 'reviews') populateReviewSelect();
+                showLoading(false);
+            }, err => { showLoading(false);
+                console.error(err); });
+        }
+
+        // ============================================
+        // DASHBOARD
+        // ============================================
+        function updateDashboard() {
+            const total = allApps.length;
+            const downloads = allApps.reduce((s, a) => s + (a.downloadCount || 0), 0);
+            const views = allApps.reduce((s, a) => s + (a.views || 0), 0);
+            const reviews = allApps.reduce((s, a) => s + (a.reviewCount || 0), 0);
+            const ratings = allApps.filter(a => a.rating).map(a => a.rating);
+            const avgRating = ratings.length ? (ratings.reduce((s, r) => s + r, 0) / ratings.length) : 0;
+            const live = allApps.filter(a => a.status === 'live' || a.status === 'approved').length;
+
+            const monthAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
+            const monthly = allApps.reduce((s, a) => {
+                if (a.downloadDate && new Date(a.downloadDate).getTime() > monthAgo) {
+                    return s + (a.downloadCount || 0);
+                }
+                return s;
+            }, 0);
+
+            $('statTotalApps').textContent = total;
+            $('statDownloads').textContent = downloads.toLocaleString();
+            $('statViews').textContent = views.toLocaleString();
+            $('statRating').textContent = avgRating.toFixed(1);
+            $('statReviewsCount').textContent = reviews;
+            $('statMonthlyDownloads').textContent = monthly.toLocaleString();
+            $('statLiveApps').textContent = live;
+            $('appCountBadge').textContent = total;
+
+            // Chart dummy
+            const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+            const maxHeight = 100;
+            days.forEach((day, i) => {
+                const val = Math.floor(Math.random() * 80 + 10);
+                const el = $(`chartDay${i + 1}`);
+                if (el) {
+                    el.style.height = `${(val / 100) * maxHeight}%`;
+                    el.title = `${day}: ${val} downloads`;
+                }
+            });
+
+            const topApps = [...allApps].sort((a, b) => (b.downloadCount || 0) - (a.downloadCount || 0)).slice(0, 5);
+            const topList = $('topAppsList');
+            topList.innerHTML = '';
+            if (topApps.length === 0) {
+                topList.innerHTML = '<p style="color:var(--text-gray);">No apps yet</p>';
+            } else {
+                topApps.forEach((app, i) => {
+                    topList.innerHTML +=
+                        `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border-color);">
+                            <span>${i + 1}. ${app.name}</span>
+                            <span style="color:var(--primary);">${app.downloadCount || 0}</span>
+                        </div>`;
+                });
+            }
+        }
+
+        // ============================================
+        // MY APPS
+        // ============================================
+        function renderMyApps() {
+            const container = $('myAppsList');
+            container.innerHTML = '';
+            if (allApps.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+                        <h3>No Apps Yet</h3>
+                        <p>Upload your first application to get started.</p>
+                        <button class="btn-primary" onclick="switchPage('upload')">Upload App</button>
+                    </div>
+                `;
+                return;
+            }
+            allApps.forEach(app => {
+                const statusMap = {
+                    'live': { class: 'live', label: 'Live' },
+                    'approved': { class: 'live', label: 'Live' },
+                    'draft': { class: 'draft', label: 'Draft' }
+                };
+                const st = statusMap[app.status] || statusMap['live'];
+                const div = document.createElement('div');
+                div.className = 'app-list-item';
+                div.innerHTML = `
+                    <div class="app-info">
+                        <img src="${app.icon || 'https://img.icons8.com/color/144/android-os.png'}" onerror="this.src='https://img.icons8.com/color/144/android-os.png'">
+                        <div>
+                            <div class="app-name">${app.name || 'App'}</div>
+                            <div class="app-meta">${app.version || 'v1.0'} • ${app.size || '0 MB'} • ${app.downloadCount || 0} downloads • ⭐ ${app.rating || 'N/A'}</div>
+                        </div>
+                    </div>
+                    <span class="app-status ${st.class}">${st.label}</span>
+                    <div class="app-actions">
+                        <button onclick="viewAppDetails('${app.id}')">Details</button>
+                        <button onclick="openEditModal('${app.id}')">Edit</button>
+                        <button onclick="openUpdateModal('${app.id}')">Update</button>
+                        <button onclick="viewAppAnalytics('${app.id}')">Analytics</button>
+                        <button class="danger" onclick="deleteApp('${app.id}')">Delete</button>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        // ============================================
+        // UPLOAD - Step Wizard
+        // ============================================
+        function nextStep(step) {
+            currentStep = step;
+            updateSteps();
+        }
+
+        function prevStep(step) {
+            currentStep = step;
+            updateSteps();
+        }
+
+        function updateSteps() {
+            for (let i = 1; i <= 4; i++) {
+                const content = $(`step${i}`);
+                const label = $(`step${i}Label`);
+                if (content) {
+                    content.classList.toggle('active', i === currentStep);
+                }
+                if (label) {
+                    label.classList.remove('active', 'done');
+                    if (i === currentStep) label.classList.add('active');
+                    else if (i < currentStep) label.classList.add('done');
+                }
+            }
+            if (currentStep > 1) {
+                saveDraft();
+            }
+        }
+
+        function saveDraft() {
+            const data = {
+                name: $('upName').value,
+                category: $('upCategory').value,
+                package: $('upPackage').value,
+                shortDesc: $('upShortDesc').value,
+                longDesc: $('upLongDesc').value,
+                tags: $('upTags').value,
+                supportEmail: $('upSupportEmail').value,
+                privacy: $('upPrivacy').value,
+                website: $('upWebsite').value,
+                apkUrl: $('upApkUrl').value,
+                version: $('upVersion').value,
+                size: $('upSize').value,
+                youtube: $('upYoutube').value,
+                minAndroid: $('upMinAndroid').value,
+                permissions: $('upPermissions').value,
+                whatsNew: $('upWhatsNew').value,
+                status: $('upStatus').value,
+                step: currentStep
+            };
+            drafts['current'] = data;
+            localStorage.setItem('stardust_drafts', JSON.stringify(drafts));
+        }
+
+        function loadDraft() {
+            const data = drafts['current'];
+            if (data) {
+                if (data.name) $('upName').value = data.name;
+                if (data.category) $('upCategory').value = data.category;
+                if (data.package) $('upPackage').value = data.package;
+                if (data.shortDesc) $('upShortDesc').value = data.shortDesc;
+                if (data.longDesc) $('upLongDesc').value = data.longDesc;
+                if (data.tags) $('upTags').value = data.tags;
+                if (data.supportEmail) $('upSupportEmail').value = data.supportEmail;
+                if (data.privacy) $('upPrivacy').value = data.privacy;
+                if (data.website) $('upWebsite').value = data.website;
+                if (data.apkUrl) $('upApkUrl').value = data.apkUrl;
+                if (data.version) $('upVersion').value = data.version;
+                if (data.size) $('upSize').value = data.size;
+                if (data.youtube) $('upYoutube').value = data.youtube;
+                if (data.minAndroid) $('upMinAndroid').value = data.minAndroid;
+                if (data.permissions) { $('upPermissions').value = data.permissions; renderPermChips('up'); }
+                if (data.whatsNew) $('upWhatsNew').value = data.whatsNew;
+                if (data.status) $('upStatus').value = data.status;
+                if (data.step) {
+                    currentStep = data.step;
+                    updateSteps();
+                }
+            }
+        }
+
+        function previewUploadImage(input, containerId) {
+            const container = $(containerId);
+            container.innerHTML = '';
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = e => {
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    if (containerId === 'bannerPreview') img.style.cssText = 'width:120px;height:60px;';
+                    container.appendChild(img);
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        function previewUploadScreens(input) {
+            const container = $('screensPreview');
+            container.innerHTML = '';
+            if (input.files) {
+                Array.from(input.files).forEach(file => {
+                    const reader = new FileReader();
+                    reader.onload = e => {
+                        const img = document.createElement('img');
+                        img.className = 'screenshot-preview';
+                        img.src = e.target.result;
+                        container.appendChild(img);
+                    };
+                    reader.readAsDataURL(file);
+                });
+            }
+        }
+
+        function uploadToImgBB(file) {
+            return new Promise((resolve, reject) => {
+                const formData = new FormData();
+                formData.append('image', file);
+                fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_KEY}`, {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            resolve(data.data.url);
+                        } else {
+                            const reader = new FileReader();
+                            reader.onload = e => resolve(e.target.result);
+                            reader.onerror = reject;
+                            reader.readAsDataURL(file);
+                        }
+                    })
+                    .catch(() => {
+                        const reader = new FileReader();
+                        reader.onload = e => resolve(e.target.result);
+                        reader.onerror = reject;
+                        reader.readAsDataURL(file);
+                    });
+            });
+        }
+
+        // ---- App permissions picker (shown to users on the store's app page) ----
+        const COMMON_PERMISSIONS = ['Internet', 'Storage', 'Camera', 'Microphone', 'Location', 'Contacts', 'Phone', 'SMS', 'Notifications', 'Bluetooth', 'Calendar', 'Vibrate', 'Run in background', 'Display over other apps', 'Install packages'];
+        function parsePerms(v) { return String(v || '').split(',').map(x => x.trim()).filter(Boolean); }
+        function renderPermChips(p) {
+            const box = $(p + 'PermChips'), ta = $(p + 'Permissions');
+            if (!box || !ta) return;
+            const cur = parsePerms(ta.value).map(x => x.toLowerCase());
+            box.innerHTML = '';
+            COMMON_PERMISSIONS.forEach(name => {
+                const b = document.createElement('button');
+                b.type = 'button';
+                b.className = 'perm-chip' + (cur.includes(name.toLowerCase()) ? ' on' : '');
+                b.textContent = name;
+                b.onclick = () => {
+                    let list = parsePerms(ta.value);
+                    const has = list.some(x => x.toLowerCase() === name.toLowerCase());
+                    list = has ? list.filter(x => x.toLowerCase() !== name.toLowerCase()) : list.concat(name);
+                    ta.value = list.join(', ');
+                    renderPermChips(p);
+                };
+                box.appendChild(b);
+            });
+        }
+        document.addEventListener('DOMContentLoaded', () => { renderPermChips('up'); renderPermChips('edit'); });
+        renderPermChips('up'); renderPermChips('edit');
+
+        function handleUpload(e) {
+            e.preventDefault();
+            const btn = $('uploadBtnText');
+            btn.textContent = 'Publishing...';
+
+            const iconFile = $('upIcon').files[0];
+            const bannerFile = $('upBanner').files[0];
+            const screenshotFiles = $('upScreenshots').files;
+
+            let iconUrl = 'https://img.icons8.com/color/144/android-os.png';
+            let bannerUrl = '';
+            let screenshotUrls = [];
+
+            const uploadPromises = [];
+            if (iconFile) uploadPromises.push(uploadToImgBB(iconFile).then(url => iconUrl = url));
+            if (bannerFile) uploadPromises.push(uploadToImgBB(bannerFile).then(url => bannerUrl = url));
+            Array.from(screenshotFiles).forEach(file => {
+                uploadPromises.push(uploadToImgBB(file).then(url => screenshotUrls.push(url)));
+            });
+
+            Promise.all(uploadPromises).then(() => {
+                const packageName = $('upPackage').value.trim();
+                const status = $('upStatus').value;
+                const finalStatus = status === 'draft' ? 'draft' : 'live';
+
+                const appData = {
+                    name: $('upName').value,
+                    package: packageName,
+                    category: $('upCategory').value,
+                    version: $('upVersion').value,
+                    shortDescription: $('upShortDesc').value,
+                    description: $('upLongDesc').value,
+                    whatsNew: $('upWhatsNew').value,
+                    downloadUrl: $('upApkUrl').value,
+                    size: $('upSize').value || '0 MB',
+                    icon: iconUrl,
+                    banner: bannerUrl,
+                    screenshot: screenshotUrls.join(','),
+                    tags: $('upTags').value,
+                    supportEmail: $('upSupportEmail').value,
+                    privacyPolicy: $('upPrivacy').value,
+                    website: $('upWebsite').value,
+                    youtube: $('upYoutube').value,
+                    minAndroid: $('upMinAndroid').value || '5.0',
+                    permissions: $('upPermissions').value.trim(),
+                    developerUid: currentUser.uid,
+                    developerName: currentUser.displayName || currentUser.email.split('@')[0],
+                    downloadCount: 0,
+                    reviewCount: 0,
+                    views: 0,
+                    rating: 0,
+                    status: finalStatus,
+                    timestamp: Date.now(),
+                    updatedDate: new Date().toISOString().split('T')[0],
+                    verified: false,
+                    versionHistory: [$('upVersion').value]
+                };
+
+                db.ref('apps').push(appData).then(() => {
+                    btn.textContent = 'Publish App';
+                    $('uploadForm').reset();
+                    renderPermChips('up');
+                    $('iconPreview').innerHTML = '';
+                    $('bannerPreview').innerHTML = '';
+                    $('screensPreview').innerHTML = '';
+                    currentStep = 1;
+                    updateSteps();
+
+                    delete drafts['current'];
+                    localStorage.setItem('stardust_drafts', JSON.stringify(drafts));
+
+                    addActivityLog(`App "${appData.name}" uploaded (${finalStatus})`);
+
+                    if (finalStatus === 'draft') {
+                        addNotification(`App "${appData.name}" saved as draft!`);
+                        alert('App saved as draft! You can publish it later.');
+                    } else {
+                        addNotification(`App "${appData.name}" is now LIVE on the store!`);
+                        alert('App published successfully! It is now live on ZishuTron Apps. It appears on the website within about 10 minutes.');
+                    }
+                    switchPage('myapps');
+                }).catch(err => {
+                    btn.textContent = 'Publish App';
+                    alert('Upload failed: ' + err.message);
+                });
+            }).catch(err => {
+                btn.textContent = 'Publish App';
+                alert('Image upload failed: ' + err.message);
+            });
+        }
+
+        // ============================================
+        // VIEW APP DETAILS
+        // ============================================
+        function viewAppDetails(appId) {
+            const app = allApps.find(a => a.id === appId);
+            if (!app) return;
+            let details = `Name: ${app.name}\nPackage: ${app.package}\nVersion: ${app.version}\nCategory: ${app.category}\nStatus: ${app.status}\nDownloads: ${app.downloadCount}\nViews: ${app.views}\nRating: ${app.rating}\nAPK: ${app.downloadUrl}\nSize: ${app.size}\nDescription: ${app.description}\nShort: ${app.shortDescription}\nTags: ${app.tags}\nSupport: ${app.supportEmail}\nPrivacy: ${app.privacyPolicy}\nWebsite: ${app.website}\nYouTube: ${app.youtube}\nMin Android: ${app.minAndroid}\nWhat's New: ${app.whatsNew}`;
+            alert(details);
+        }
+
+        // ============================================
+        // EDIT APP - Full, only file uploads (no URL fields for images)
+        // ============================================
+        function openEditModal(appId) {
+            const app = allApps.find(a => a.id === appId);
+            if (!app) return;
+            editAppId = appId;
+            $('editAppId').value = appId;
+            $('editName').value = app.name || '';
+            $('editCategory').value = app.category || 'Games';
+            $('editPackage').value = app.package || '';
+            $('editVersion').value = app.version || '';
+            $('editShortDesc').value = app.shortDescription || '';
+            $('editLongDesc').value = app.description || '';
+            $('editApkUrl').value = app.downloadUrl || '';
+            $('editSize').value = app.size || '';
+            $('editTags').value = app.tags || '';
+            $('editSupportEmail').value = app.supportEmail || '';
+            $('editPrivacy').value = app.privacyPolicy || '';
+            $('editWebsite').value = app.website || '';
+            $('editYoutube').value = app.youtube || '';
+            $('editMinAndroid').value = app.minAndroid || '';
+            $('editPermissions').value = app.permissions || '';
+            renderPermChips('edit');
+            $('editWhatsNew').value = app.whatsNew || '';
+            $('editStatus').value = app.status || 'live';
+            // Clear previews
+            $('editIconPreview').innerHTML = '';
+            $('editBannerPreview').innerHTML = '';
+            $('editScreensPreview').innerHTML = '';
+            // Show current icon as preview if available
+            if (app.icon) {
+                const img = document.createElement('img');
+                img.src = app.icon;
+                img.style.width = '60px';
+                img.style.height = '60px';
+                img.style.borderRadius = '8px';
+                img.style.objectFit = 'cover';
+                $('editIconPreview').appendChild(img);
+            }
+            if (app.banner) {
+                const img = document.createElement('img');
+                img.src = app.banner;
+                img.style.width = '120px';
+                img.style.height = '60px';
+                img.style.borderRadius = '8px';
+                img.style.objectFit = 'cover';
+                $('editBannerPreview').appendChild(img);
+            }
+            if (app.screenshot) {
+                const urls = app.screenshot.split(',');
+                urls.forEach(url => {
+                    if (url.trim()) {
+                        const img = document.createElement('img');
+                        img.src = url.trim();
+                        img.className = 'screenshot-preview';
+                        $('editScreensPreview').appendChild(img);
+                    }
+                });
+            }
+            $('editModal').classList.add('open');
+        }
+
+        function closeEditModal() {
+            $('editModal').classList.remove('open');
+        }
+
+        function previewEditIcon(input) {
+            const container = $('editIconPreview');
+            container.innerHTML = '';
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = e => {
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.style.width = '60px';
+                    img.style.height = '60px';
+                    img.style.borderRadius = '8px';
+                    img.style.objectFit = 'cover';
+                    container.appendChild(img);
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        function previewEditBanner(input) {
+            const container = $('editBannerPreview');
+            container.innerHTML = '';
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = e => {
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.style.width = '120px';
+                    img.style.height = '60px';
+                    img.style.borderRadius = '8px';
+                    img.style.objectFit = 'cover';
+                    container.appendChild(img);
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        function previewEditScreens(input) {
+            const container = $('editScreensPreview');
+            container.innerHTML = '';
+            if (input.files) {
+                Array.from(input.files).forEach(file => {
+                    const reader = new FileReader();
+                    reader.onload = e => {
+                        const img = document.createElement('img');
+                        img.className = 'screenshot-preview';
+                        img.src = e.target.result;
+                        container.appendChild(img);
+                    };
+                    reader.readAsDataURL(file);
+                });
+            }
+        }
+
+        function saveFullEdit(e) {
+            e.preventDefault();
+            const id = $('editAppId').value;
+            const iconFile = $('editIconFile').files[0];
+            const bannerFile = $('editBannerFile').files[0];
+            const screenshotFiles = $('editScreenshots').files;
+
+            let iconUrl = null;
+            let bannerUrl = null;
+            let screenshotUrls = [];
+
+            const uploadPromises = [];
+            if (iconFile) uploadPromises.push(uploadToImgBB(iconFile).then(url => iconUrl = url));
+            if (bannerFile) uploadPromises.push(uploadToImgBB(bannerFile).then(url => bannerUrl = url));
+            Array.from(screenshotFiles).forEach(file => {
+                uploadPromises.push(uploadToImgBB(file).then(url => screenshotUrls.push(url)));
+            });
+
+            Promise.all(uploadPromises).then(() => {
+                const updates = {
+                    name: $('editName').value,
+                    category: $('editCategory').value,
+                    package: $('editPackage').value,
+                    version: $('editVersion').value,
+                    shortDescription: $('editShortDesc').value,
+                    description: $('editLongDesc').value,
+                    downloadUrl: $('editApkUrl').value,
+                    size: $('editSize').value,
+                    tags: $('editTags').value,
+                    supportEmail: $('editSupportEmail').value,
+                    privacyPolicy: $('editPrivacy').value,
+                    website: $('editWebsite').value,
+                    youtube: $('editYoutube').value,
+                    minAndroid: $('editMinAndroid').value,
+                    permissions: $('editPermissions').value.trim(),
+                    whatsNew: $('editWhatsNew').value,
+                    status: $('editStatus').value,
+                    updatedDate: new Date().toISOString().split('T')[0]
+                };
+                // Only update images if new files were uploaded
+                if (iconUrl) updates.icon = iconUrl;
+                if (bannerUrl) updates.banner = bannerUrl;
+                if (screenshotUrls.length) updates.screenshot = screenshotUrls.join(',');
+
+                db.ref(`apps/${id}`).update(updates).then(() => {
+                    addActivityLog(`App "${updates.name}" fully edited`);
+                    addNotification(`App "${updates.name}" updated successfully!`);
+                    closeEditModal();
+                    renderMyApps();
+                    alert('App updated successfully!');
+                });
+            }).catch(err => {
+                alert('Image upload failed: ' + err.message);
+            });
+        }
+
+        // ============================================
+        // UPDATE APP
+        // ============================================
+        function openUpdateModal(appId) {
+            const app = allApps.find(a => a.id === appId);
+            if (!app) return;
+            updateAppId = appId;
+            $('updateAppId').value = appId;
+            $('updateVersion').value = '';
+            $('updateApkUrl').value = '';
+            $('updateWhatsNew').value = '';
+            $('updateModal').classList.add('open');
+        }
+
+        function closeUpdateModal() {
+            $('updateModal').classList.remove('open');
+        }
+
+        function submitUpdate(e) {
+            e.preventDefault();
+            const id = $('updateAppId').value;
+            const version = $('updateVersion').value;
+            const apkUrl = $('updateApkUrl').value;
+            const whatsNew = $('updateWhatsNew').value;
+
+            const app = allApps.find(a => a.id === id);
+            if (!app) return;
+
+            const history = app.versionHistory || [];
+            if (app.version) history.push(app.version);
+
+            db.ref(`apps/${id}`).update({
+                version: version,
+                downloadUrl: apkUrl,
+                whatsNew: whatsNew,
+                status: 'live',
+                versionHistory: history,
+                updatedDate: new Date().toISOString().split('T')[0]
+            }).then(() => {
+                addActivityLog(`Update for "${app.name}" to v${version} published`);
+                addNotification(`Update for "${app.name}" is now LIVE!`);
+                closeUpdateModal();
+                renderMyApps();
+                alert('Update published successfully!');
+            });
+        }
+
+        // ============================================
+        // DELETE APP
+        // ============================================
+        function deleteApp(appId) {
+            if (!confirm('Delete this app permanently? This cannot be undone.')) return;
+            const app = allApps.find(a => a.id === appId);
+            db.ref(`apps/${appId}`).remove().then(() => {
+                if (app) addActivityLog(`App "${app.name}" deleted`);
+                addNotification('App deleted.');
+                renderMyApps();
+            });
+        }
+
+        // ============================================
+        // ANALYTICS
+        // ============================================
+        function populateAnalyticsSelect() {
+            const select = $('anaAppSelect');
+            select.innerHTML = '<option value="">Select App</option>';
+            allApps.forEach(app => {
+                select.innerHTML += `<option value="${app.id}">${app.name}</option>`;
+            });
+        }
+
+        function viewAppAnalytics(appId) {
+            $('anaAppSelect').value = appId;
+            switchPage('analytics');
+            loadAppAnalytics();
+        }
+
+        function loadAppAnalytics() {
+            const appId = $('anaAppSelect').value;
+            const container = $('analyticsContainer');
+            if (!appId) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg>
+                        <h3>Select an App</h3>
+                        <p>Choose an app from the dropdown to see analytics.</p>
+                    </div>
+                `;
+                return;
+            }
+            const app = allApps.find(a => a.id === appId);
+            if (!app) return;
+
+            container.innerHTML = `
+                <div style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius-sm);padding:20px;">
+                    <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px;">
+                        <img src="${app.icon || 'https://img.icons8.com/color/144/android-os.png'}" style="width:48px;height:48px;border-radius:12px;object-fit:cover;border:1px solid var(--border-color);">
+                        <div>
+                            <div style="font-size:18px;font-weight:600;">${app.name}</div>
+                            <div style="color:var(--text-gray);">${app.version || 'v1.0'} • ${app.category || 'General'}</div>
+                        </div>
+                    </div>
+                    <div class="stats-grid" style="margin-bottom:16px;">
+                        <div class="stat-card"><div class="stat-value">${app.downloadCount || 0}</div><div class="stat-label">Downloads</div></div>
+                        <div class="stat-card"><div class="stat-value">${app.views || 0}</div><div class="stat-label">Views</div></div>
+                        <div class="stat-card"><div class="stat-value">${app.rating || 'N/A'}</div><div class="stat-label">Rating</div></div>
+                        <div class="stat-card"><div class="stat-value">${app.reviewCount || 0}</div><div class="stat-label">Reviews</div></div>
+                    </div>
+                    <div style="background:var(--bg-input);border-radius:var(--radius-sm);padding:16px;text-align:center;color:var(--text-gray);">
+                        <div style="font-size:32px;margin-bottom:8px;">📊</div>
+                        <p>Detailed charts will be displayed here</p>
+                        <p style="font-size:13px;">Daily, Weekly, Monthly charts • Country-wise downloads</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        // ============================================
+        // REVIEWS
+        // ============================================
+        function populateReviewSelect() {
+            const select = $('reviewAppSelect');
+            select.innerHTML = '<option value="">Select App</option>';
+            allApps.forEach(app => {
+                select.innerHTML += `<option value="${app.id}">${app.name}</option>`;
+            });
+        }
+
+        function loadReviews() {
+            const appId = $('reviewAppSelect').value;
+            if (!appId) {
+                $('reviewsList').innerHTML = `
+                    <div class="empty-state">
+                        <svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                        <h3>Select an App</h3>
+                        <p>Choose an app to see its reviews.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            db.ref(`reviews/${appId}`).on('value', snapshot => {
+                const data = snapshot.val();
+                allReviews = data || {};
+                renderReviews();
+            });
+        }
+
+        function renderReviews() {
+            const container = $('reviewsList');
+            container.innerHTML = '';
+
+            let allRev = [];
+            const appId = $('reviewAppSelect').value;
+            if (appId && allReviews[appId]) {
+                Object.keys(allReviews[appId]).forEach(revId => {
+                    const rev = allReviews[appId][revId];
+                    allRev.push({ ...rev, id: revId, appId: appId });
+                });
+            }
+
+            if (currentReviewFilter !== 'all') {
+                const star = parseInt(currentReviewFilter);
+                allRev = allRev.filter(r => Math.round(r.rating || 5) === star);
+            }
+
+            if (allRev.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                        <h3>No Reviews</h3>
+                        <p>This app doesn't have any reviews yet.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            allRev.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0)).forEach(rev => {
+                let stars = '';
+                for (let i = 0; i < 5; i++) stars += i < Math.round(rev.rating || 5) ? '★' : '☆';
+                const div = document.createElement('div');
+                div.className = 'review-item';
+                div.innerHTML = `
+                    <div class="rev-head">
+                        <span class="rev-user">${rev.author || 'Anonymous'}</span>
+                        <span class="rev-stars">${stars}</span>
+                    </div>
+                    <div class="rev-text">${rev.text || ''}</div>
+                    ${rev.reply ? `<div class="dev-reply"><strong>Developer Reply:</strong> ${rev.reply}</div>` : ''}
+                    <div class="rev-reply">
+                        <input type="text" placeholder="Reply to this review..." id="replyInput_${rev.id}" />
+                        <button onclick="submitReply('${rev.appId}','${rev.id}')">Reply</button>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function filterReviews(star) {
+            currentReviewFilter = star;
+            document.querySelectorAll('.review-filter button').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.star == star);
+            });
+            renderReviews();
+        }
+
+        function submitReply(appId, revId) {
+            const input = $(`replyInput_${revId}`);
+            if (!input || !input.value.trim()) return;
+            const replyText = input.value.trim();
+
+            db.ref(`reviews/${appId}/${revId}/reply`).set(replyText).then(() => {
+                input.value = '';
+                addNotification('Reply sent successfully!');
+                renderReviews();
+            });
+        }
+
+        // ============================================
+        // NOTIFICATIONS
+        // ============================================
+        function loadNotifications() {
+            if (!currentUser) return;
+            db.ref(`notifications/${currentUser.uid}`).on('value', snapshot => {
+                const data = snapshot.val();
+                allNotifications = data ? Object.values(data).sort((a, b) => b.timestamp - a.timestamp) : [];
+                $('notifBadge').textContent = allNotifications.filter(n => !n.read).length;
+                if (currentPage === 'notifications') renderNotifications();
+            });
+        }
+
+        function addNotification(text) {
+            if (!currentUser) return;
+            db.ref(`notifications/${currentUser.uid}`).push({
+                text: text,
+                timestamp: Date.now(),
+                read: false
+            });
+        }
+
+        function renderNotifications() {
+            const container = $('notificationsList');
+            container.innerHTML = '';
+            if (allNotifications.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <svg viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2zm-2 1H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z"/></svg>
+                        <h3>No Notifications</h3>
+                        <p>You're all caught up!</p>
+                    </div>
+                `;
+                return;
+            }
+            allNotifications.forEach(n => {
+                const div = document.createElement('div');
+                div.className = 'notif-item';
+                div.innerHTML = `
+                    <div class="notif-icon">
+                        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg>
+                    </div>
+                    <div class="notif-text">${n.text}</div>
+                    <div class="notif-time">${new Date(n.timestamp).toLocaleDateString()}</div>
+                `;
+                container.appendChild(div);
+            });
+            if (allNotifications.length > 0) {
+                db.ref(`notifications/${currentUser.uid}`).once('value').then(snap => {
+                    const data = snap.val();
+                    if (data) {
+                        Object.keys(data).forEach(key => {
+                            db.ref(`notifications/${currentUser.uid}/${key}/read`).set(true);
+                        });
+                    }
+                });
+            }
+            $('notifBadge').textContent = 0;
+        }
+
+        // ============================================
+        // ACTIVITY LOG
+        // ============================================
+        function addActivityLog(action) {
+            activityLog.unshift({ action, timestamp: Date.now() });
+            if (activityLog.length > 100) activityLog.pop();
+            localStorage.setItem('stardust_activity_log', JSON.stringify(activityLog));
+        }
+
+        function viewActivityLog() {
+            if (activityLog.length === 0) {
+                alert('No activity logged yet.');
+                return;
+            }
+            let msg = 'Recent Activity:\n\n';
+            activityLog.slice(0, 20).forEach(log => {
+                const date = new Date(log.timestamp).toLocaleString();
+                msg += `• ${date}: ${log.action}\n`;
+            });
+            alert(msg);
+        }
+
+        function viewDrafts() {
+            const draftKeys = Object.keys(drafts);
+            if (draftKeys.length === 0) {
+                alert('No drafts saved.');
+                return;
+            }
+            let msg = 'Saved Drafts:\n\n';
+            draftKeys.forEach(key => {
+                const d = drafts[key];
+                msg += `• ${d.name || 'Untitled'} (Step ${d.step || 1})\n`;
+            });
+            msg += '\nClick "Upload App" to continue your draft.';
+            alert(msg);
+        }
+
+        // ============================================
+        // PROFILE
+        // ============================================
+        function loadProfile() {
+            if (!currentUser) return;
+            db.ref(`developers/${currentUser.uid}`).once('value').then(snap => {
+                const data = snap.val() || {};
+                $('profName').value = data.displayName || currentUser.displayName || '';
+                $('profBio').value = data.bio || '';
+                $('profWebsite').value = data.website || '';
+                $('profGithub').value = data.github || '';
+                $('profEmail').value = data.supportEmail || currentUser.email || '';
+                $('profCountry').value = data.country || '';
+                if (data.photoURL) {
+                    $('profilePfpPreview').src = data.photoURL;
+                }
+            });
+        }
+
+        function previewProfilePfp(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = e => {
+                    $('profilePfpPreview').src = e.target.result;
+                    window._tempPfp = e.target.result;
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        function saveProfile() {
+            if (!currentUser) return;
+            const data = {
+                displayName: $('profName').value,
+                bio: $('profBio').value,
+                website: $('profWebsite').value,
+                github: $('profGithub').value,
+                supportEmail: $('profEmail').value,
+                country: $('profCountry').value,
+                updatedAt: Date.now()
+            };
+            if (window._tempPfp) {
+                data.photoURL = window._tempPfp;
+                window._tempPfp = null;
+            }
+            db.ref(`developers/${currentUser.uid}`).update(data).then(() => {
+                if (data.displayName) {
+                    currentUser.updateProfile({ displayName: data.displayName });
+                }
+                addNotification('Profile updated successfully!');
+                alert('Profile saved!');
+                loadProfile();
+            });
+        }
+
+        // ============================================
+        // SETTINGS
+        // ============================================
+        function changePassword() {
+            const currentPw = prompt('Enter current password:');
+            if (!currentPw) return;
+            const newPw = prompt('Enter new password (min 6 chars):');
+            if (!newPw || newPw.length < 6) { alert('Password must be at least 6 characters.'); return; }
+            const confirmPw = prompt('Confirm new password:');
+            if (newPw !== confirmPw) { alert('Passwords do not match.'); return; }
+
+            const user = auth.currentUser;
+            const credential = firebase.auth.EmailAuthProvider.credential(user.email, currentPw);
+            user.reauthenticateWithCredential(credential).then(() => {
+                user.updatePassword(newPw).then(() => {
+                    addNotification('Password changed successfully!');
+                    alert('Password changed!');
+                }).catch(err => alert('Error: ' + err.message));
+            }).catch(err => alert('Current password is incorrect.'));
+        }
+
+        function changeEmail() {
+            const newEmail = prompt('Enter new email address:');
+            if (!newEmail || !newEmail.includes('@')) { alert('Invalid email address.'); return; }
+            const user = auth.currentUser;
+            user.updateEmail(newEmail).then(() => {
+                db.ref(`developers/${user.uid}/email`).set(newEmail);
+                addNotification('Email updated successfully!');
+                alert('Email updated!');
+                $('userDisplayEmail').textContent = newEmail;
+            }).catch(err => alert('Error: ' + err.message));
+        }
+
+        function deleteAccount() {
+            if (!confirm('Are you sure you want to delete your account? This cannot be undone!')) return;
+            if (!confirm('All your apps and data will be permanently deleted. Continue?')) return;
+
+            const user = auth.currentUser;
+            db.ref(`developers/${user.uid}`).remove();
+            db.ref(`notifications/${user.uid}`).remove();
+            allApps.forEach(app => {
+                if (app.developerUid === user.uid) {
+                    db.ref(`apps/${app.id}`).remove();
+                }
+            });
+            user.delete().then(() => {
+                localStorage.removeItem('stardust_uid');
+                loginPage.style.display = 'flex';
+                appContainer.classList.remove('show');
+                alert('Account deleted successfully.');
+            }).catch(err => {
+                alert('Error deleting account: ' + err.message);
+            });
+        }
+
+        function changeLanguage() {
+            const lang = prompt('Select language (en, hi, es, fr, de):', 'en');
+            if (lang) {
+                localStorage.setItem('stardust_lang', lang);
+                addNotification(`Language changed to ${lang}`);
+                alert(`Language set to ${lang}`);
+            }
+        }
+
+        // ============================================
+        // INIT
+        // ============================================
+        document.addEventListener('DOMContentLoaded', () => {
+            showLoading(true, 'Starting ZishuTron Apps Console...');
+            loadDraft();
+
+            if (auth.currentUser) {
+                showLoading(false);
+            } else {
+                loginPage.style.display = 'flex';
+                appContainer.classList.remove('show');
+                showLoading(false);
+            }
+        });
+
+        console.log('🚀 Stardust Developer Console loaded successfully!');
+        console.log('📦 Features: Dashboard, App Management, Upload Wizard, Analytics, Reviews, Notifications, Profile, Settings');
+        console.log('🔄 Real-time: Apps sync automatically with Firebase');
+        console.log('📝 Drafts: Save progress and continue later');
+        console.log('✅ Apps go LIVE immediately after upload - no approval needed!');
+        console.log('🔐 Google Sign-In enabled!');
+        console.log('🎨 Persistent theme saved in localStorage');
+        console.log('🖼️ Edit modal only uses file uploads for images (no URL fields)');
+    </script>
+</body>
+</html>
