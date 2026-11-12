@@ -102,7 +102,7 @@
                 .then(result => {
                     btn.disabled = false;
                     btn.textContent = isLoginMode ? 'Sign In' : 'Create Account';
-                    initApp(result.user);
+                    goNext();
                 })
                 .catch(err => {
                     btn.disabled = false;
@@ -116,7 +116,7 @@
             const provider = new firebase.auth.GoogleAuthProvider();
             auth.signInWithPopup(provider)
                 .then(result => {
-                    initApp(result.user);
+                    goNext();
                 })
                 .catch(err => {
                     alert('Google Sign-In failed: ' + err.message);
@@ -148,54 +148,62 @@
         // ============================================
         // AUTH STATE LISTENER
         // ============================================
+        const ON_AUTH_PAGE = currentPage === 'auth';
+        function nextUrl() {
+            const n = new URLSearchParams(location.search).get('next') || '/';
+            return (n.charAt(0) === '/' && n.charAt(1) !== '/' && n.indexOf('/auth') !== 0) ? n : '/';
+        }
+        let leaving = false;
+        function goNext() { if (leaving) return; leaving = true; location.replace(nextUrl()); }
+
         auth.onAuthStateChanged(user => {
             if (user) {
-                if (!appContainer.classList.contains('show')) {
-                    initApp(user);
-                }
+                try { localStorage.setItem('stardust_uid', user.uid); } catch (e) {}
+                if (ON_AUTH_PAGE) { goNext(); return; }
+                if (!appContainer.classList.contains('show')) initApp(user);
             } else {
-                loginPage.style.display = 'flex';
-                appContainer.classList.remove('show');
-                localStorage.removeItem('stardust_uid');
-                showLoading(false);
+                try { localStorage.removeItem('stardust_uid'); } catch (e) {}
+                if (ON_AUTH_PAGE) {
+                    loginPage.style.display = 'flex';
+                    showLoading(false);
+                } else if (!leaving) {
+                    leaving = true;
+                    location.replace('/auth/?next=' + encodeURIComponent(location.pathname + location.search));
+                }
             }
         });
 
         // ============================================
         // THEME - Persistent
         // ============================================
+        const THEME_KEY = 'zt_console_theme'; // 'dark' | 'light'; nothing saved = follow the phone's system theme
         let darkMode = true;
+        const sysDark = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : { matches: true };
 
-        function applyTheme(dark) {
+        function applyTheme(dark, persist) {
             const root = document.documentElement;
-            if (dark) {
-                root.style.setProperty('--bg-dark', '#0b0f19');
-                root.style.setProperty('--bg-card', '#111827');
-                root.style.setProperty('--bg-input', '#1f2937');
-                root.style.setProperty('--text-light', '#f9fafb');
-                root.style.setProperty('--text-gray', '#9ca3af');
-                root.style.setProperty('--border-color', '#374151');
-            } else {
-                root.style.setProperty('--bg-dark', '#f1f5f9');
-                root.style.setProperty('--bg-card', '#ffffff');
-                root.style.setProperty('--bg-input', '#e2e8f0');
-                root.style.setProperty('--text-light', '#0f172a');
-                root.style.setProperty('--text-gray', '#475569');
-                root.style.setProperty('--border-color', '#cbd5e1');
-            }
-            localStorage.setItem('stardust_dev_theme', dark ? 'dark' : 'light');
+            const v = dark
+                ? { '--bg-dark': '#0b0f19', '--bg-card': '#111827', '--bg-input': '#1f2937', '--text-light': '#f9fafb', '--text-gray': '#9ca3af', '--border-color': '#374151' }
+                : { '--bg-dark': '#f1f5f9', '--bg-card': '#ffffff', '--bg-input': '#e2e8f0', '--text-light': '#0f172a', '--text-gray': '#475569', '--border-color': '#cbd5e1' };
+            Object.keys(v).forEach(k => root.style.setProperty(k, v[k]));
+            root.style.colorScheme = dark ? 'dark' : 'light';
+            try { if (persist) localStorage.setItem(THEME_KEY, dark ? 'dark' : 'light'); } catch (e) {}
             darkMode = dark;
         }
-
-        const savedTheme = localStorage.getItem('stardust_dev_theme');
-        if (savedTheme === 'light') {
-            applyTheme(false);
-        } else {
-            applyTheme(true);
+        let savedTheme = null;
+        try { savedTheme = localStorage.getItem(THEME_KEY); } catch (e) {}
+        applyTheme(savedTheme ? savedTheme === 'dark' : sysDark.matches, false);
+        if (sysDark.addEventListener) sysDark.addEventListener('change', e => {
+            let s = null; try { s = localStorage.getItem(THEME_KEY); } catch (x) {}
+            if (!s) applyTheme(e.matches, false);
+        });
+        function useSystemTheme() {
+            try { localStorage.removeItem(THEME_KEY); } catch (e) {}
+            applyTheme(sysDark.matches, false);
         }
 
         function toggleThemeSettings() {
-            applyTheme(!darkMode);
+            applyTheme(!darkMode, true);
         }
 
         // ============================================
@@ -205,8 +213,8 @@
             if (confirm('Are you sure you want to logout?')) {
                 auth.signOut().then(() => {
                     localStorage.removeItem('stardust_uid');
-                    loginPage.style.display = 'flex';
-                    appContainer.classList.remove('show');
+                    leaving = true;
+                    location.replace('/auth/');
                 });
             }
         }
@@ -533,39 +541,86 @@
             const box = $(boxId), input = $(inputId);
             const mgr = { items: [] };
             const fkey = f => f.name + '|' + f.size + '|' + f.lastModified;
-            let dragFrom = -1;
+            const HOLD_MS = 350;
+            let drag = null; // active long-press drag state
 
-            function move(from, to) {
-                if (to < 0 || to >= mgr.items.length || from === to) return;
-                const [it] = mgr.items.splice(from, 1);
-                mgr.items.splice(to, 0, it);
-                render();
-            }
             function remove(i) {
                 const [it] = mgr.items.splice(i, 1);
                 if (it && it.file) URL.revokeObjectURL(it.src);
                 render();
             }
+
+            // ---- long press, then drag to reorder ----
+            function startHold(e, el) {
+                if (drag || e.target.closest('.shot-x')) return;
+                if (e.pointerType === 'mouse' && e.button !== 0) return;
+                drag = { el, id: e.pointerId, x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY, active: false, ghost: null };
+                drag.timer = setTimeout(() => activate(), HOLD_MS);
+            }
+            function activate() {
+                if (!drag) return;
+                drag.active = true;
+                const r = drag.el.getBoundingClientRect();
+                drag.dx = drag.x - r.left; drag.dy = drag.y - r.top;
+                const g = drag.el.cloneNode(true);
+                g.classList.add('shot-ghost');
+                g.style.width = r.width + 'px';
+                document.body.appendChild(g);
+                drag.ghost = g;
+                drag.el.classList.add('dragging');
+                if (navigator.vibrate) { try { navigator.vibrate(15); } catch (x) {} }
+                moveGhost();
+            }
+            function moveGhost() {
+                drag.ghost.style.left = (drag.x - drag.dx) + 'px';
+                drag.ghost.style.top = (drag.y - drag.dy) + 'px';
+                const under = document.elementFromPoint(drag.x, drag.y);
+                const t = under && under.closest ? under.closest('.shot') : null;
+                if (!t || t === drag.el || t.classList.contains('shot-add') || t.classList.contains('shot-ghost') || t.parentNode !== box) return;
+                const kids = Array.from(box.children);
+                if (kids.indexOf(drag.el) < kids.indexOf(t)) box.insertBefore(drag.el, t.nextSibling);
+                else box.insertBefore(drag.el, t);
+            }
+            function onMove(e) {
+                if (!drag || e.pointerId !== drag.id) return;
+                drag.x = e.clientX; drag.y = e.clientY;
+                if (!drag.active) {
+                    if (Math.abs(drag.x - drag.x0) > 10 || Math.abs(drag.y - drag.y0) > 10) { clearTimeout(drag.timer); drag = null; } // finger is scrolling
+                    return;
+                }
+                e.preventDefault();
+                moveGhost();
+            }
+            function endDrag(e) {
+                if (!drag || (e && e.pointerId !== drag.id)) return;
+                clearTimeout(drag.timer);
+                const was = drag.active;
+                if (was) {
+                    drag.ghost.remove();
+                    const order = Array.from(box.querySelectorAll('.shot:not(.shot-add)')).map(n => n._it).filter(Boolean);
+                    if (order.length === mgr.items.length) mgr.items = order;
+                }
+                drag = null;
+                if (was) render();
+            }
+            box.addEventListener('touchmove', e => { if (drag && drag.active) e.preventDefault(); }, { passive: false });
+            window.addEventListener('pointermove', onMove, { passive: false });
+            window.addEventListener('pointerup', endDrag);
+            window.addEventListener('pointercancel', endDrag);
+
             function render() {
                 box.innerHTML = '';
                 box.classList.add('shot-grid');
-                const last = mgr.items.length - 1;
                 mgr.items.forEach((it, i) => {
                     const d = document.createElement('div');
                     d.className = 'shot';
-                    d.draggable = true;
-                    d.innerHTML = `<img alt="Screenshot ${i + 1}"><span class="shot-n">${i + 1}</span>
-                        <button type="button" class="shot-x" aria-label="Remove screenshot ${i + 1}">×</button>
-                        <div class="shot-mv"><button type="button" class="mv-l" aria-label="Move earlier" ${i === 0 ? 'disabled' : ''}>◀</button><button type="button" class="mv-r" aria-label="Move later" ${i === last ? 'disabled' : ''}>▶</button></div>`;
+                    d._it = it;
+                    d.innerHTML = `<img alt="Screenshot ${i + 1}" draggable="false"><span class="shot-n">${i + 1}</span>
+                        <button type="button" class="shot-x" aria-label="Remove screenshot ${i + 1}">×</button>`;
                     d.querySelector('img').src = it.src;
                     d.querySelector('.shot-x').onclick = () => remove(i);
-                    d.querySelector('.mv-l').onclick = () => move(i, i - 1);
-                    d.querySelector('.mv-r').onclick = () => move(i, i + 1);
-                    d.addEventListener('dragstart', e => { dragFrom = i; d.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', String(i)); } catch (x) {} });
-                    d.addEventListener('dragend', () => { d.classList.remove('dragging'); dragFrom = -1; });
-                    d.addEventListener('dragover', e => { e.preventDefault(); d.classList.add('over'); });
-                    d.addEventListener('dragleave', () => d.classList.remove('over'));
-                    d.addEventListener('drop', e => { e.preventDefault(); d.classList.remove('over'); if (dragFrom > -1) move(dragFrom, i); });
+                    d.addEventListener('pointerdown', e => startHold(e, d));
+                    d.addEventListener('contextmenu', e => e.preventDefault());
                     box.appendChild(d);
                 });
                 if (mgr.items.length < MAX_SHOTS) {
@@ -578,7 +633,7 @@
                 if (mgr.items.length > 1) {
                     const hint = document.createElement('div');
                     hint.className = 'shot-hint';
-                    hint.textContent = 'Use ◀ ▶ (or drag) to set the order. The first screenshot is shown first. Tap × to remove.';
+                    hint.textContent = 'Long press an image, then drag it to change the order. The first one is shown first. Tap × to remove.';
                     box.appendChild(hint);
                 }
             }
@@ -588,12 +643,11 @@
                     if (mgr.items.some(x => x.file && fkey(x.file) === fkey(f))) return;
                     mgr.items.push({ file: f, src: URL.createObjectURL(f) });
                 });
-                input.value = ''; // so the same picture can be chosen again later
+                input.value = '';
                 render();
             });
             mgr.setExisting = urls => { mgr.items.forEach(it => it.file && URL.revokeObjectURL(it.src)); mgr.items = urls.map(u => ({ url: u, src: u })); render(); };
             mgr.clear = () => mgr.setExisting([]);
-            // uploads only the new pictures, keeps the developer's order
             mgr.resolve = () => Promise.all(mgr.items.map(it => it.url ? Promise.resolve(it.url) : uploadToImgBB(it.file)));
             render();
             return mgr;
@@ -1339,9 +1393,9 @@
             });
             user.delete().then(() => {
                 localStorage.removeItem('stardust_uid');
-                loginPage.style.display = 'flex';
-                appContainer.classList.remove('show');
                 alert('Account deleted successfully.');
+                leaving = true;
+                location.replace('/auth/');
             }).catch(err => {
                 alert('Error deleting account: ' + err.message);
             });
@@ -1360,16 +1414,7 @@
         // INIT
         // ============================================
         document.addEventListener('DOMContentLoaded', () => {
-            showLoading(true, 'Starting ZishuTron Apps Console...');
-            loadDraft();
-
-            if (auth.currentUser) {
-                showLoading(false);
-            } else {
-                loginPage.style.display = 'flex';
-                appContainer.classList.remove('show');
-                showLoading(false);
-            }
+            loadDraft(); // the loading screen stays until Firebase says who is signed in
         });
 
         console.log('🚀 ZishuTron Apps Console loaded');

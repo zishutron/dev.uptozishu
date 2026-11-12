@@ -1154,3 +1154,10 @@
         .shot-add span { font-size: 34px; line-height: 1; color: var(--primary-light); }
         .shot-add small { font-size: 12px; }
         .shot-hint { flex-basis: 100%; font-size: 12px; color: var(--text-gray); }
+
+        #upLongDesc, #editLongDesc { min-height: 260px; line-height: 1.55; resize: vertical; }
+        .shot-grid .shot { touch-action: manipulation; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; cursor: grab; }
+        .shot-grid .shot img { -webkit-user-drag: none; pointer-events: none; }
+        .shot-grid .shot.dragging { opacity: .3; }
+        .shot-ghost { position: fixed; z-index: 99999; pointer-events: none; opacity: .95; transform: scale(1.08); box-shadow: 0 12px 30px rgba(0,0,0,.5); margin: 0 !important; }
+        .shot-ghost .shot-x { display: none; }
