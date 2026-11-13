@@ -421,6 +421,11 @@
         // ============================================
         // UPLOAD - Step Wizard
         // ============================================
+        // Name shown on the store when the developer leaves the field empty: the profile name
+        function profileDevName() {
+            return (currentUser && (currentUser.displayName || (currentUser.email || '').split('@')[0])) || 'Developer';
+        }
+
         function nextStep(step) {
             currentStep = step;
             updateSteps();
@@ -456,6 +461,7 @@
                 package: $('upPackage').value,
                 shortDesc: $('upShortDesc').value,
                 longDesc: $('upLongDesc').value,
+                developerName: $('upDeveloperName').value,
                 tags: $('upTags').value,
                 supportEmail: $('upSupportEmail').value,
                 privacy: $('upPrivacy').value,
@@ -482,6 +488,7 @@
                 if (data.package) $('upPackage').value = data.package;
                 if (data.shortDesc) $('upShortDesc').value = data.shortDesc;
                 if (data.longDesc) $('upLongDesc').value = data.longDesc;
+                if (data.developerName) $('upDeveloperName').value = data.developerName;
                 if (data.tags) $('upTags').value = data.tags;
                 if (data.supportEmail) $('upSupportEmail').value = data.supportEmail;
                 if (data.privacy) $('upPrivacy').value = data.privacy;
@@ -754,7 +761,7 @@
                     minAndroid: $('upMinAndroid').value || '5.0',
                     permissions: $('upPermissions').value.trim(),
                     developerUid: currentUser.uid,
-                    developerName: currentUser.displayName || currentUser.email.split('@')[0],
+                    developerName: ($('upDeveloperName').value || '').trim() || profileDevName(),
                     downloadCount: 0,
                     reviewCount: 0,
                     views: 0,
@@ -822,6 +829,7 @@
             $('editPackage').value = app.package || '';
             $('editVersion').value = app.version || '';
             $('editShortDesc').value = app.shortDescription || '';
+            $('editDeveloperName').value = app.developerName || '';
             $('editLongDesc').value = app.description || '';
             $('editApkUrl').value = app.downloadUrl || '';
             $('editSize').value = app.size || '';
@@ -941,6 +949,7 @@
                     package: $('editPackage').value,
                     version: $('editVersion').value,
                     shortDescription: $('editShortDesc').value,
+                    developerName: ($('editDeveloperName').value || '').trim() || profileDevName(),
                     description: $('editLongDesc').value,
                     downloadUrl: $('editApkUrl').value,
                     size: $('editSize').value,

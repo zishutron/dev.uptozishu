@@ -1161,3 +1161,5 @@
         .shot-grid .shot.dragging { opacity: .3; }
         .shot-ghost { position: fixed; z-index: 99999; pointer-events: none; opacity: .95; transform: scale(1.08); box-shadow: 0 12px 30px rgba(0,0,0,.5); margin: 0 !important; }
         .shot-ghost .shot-x { display: none; }
+
+        #upLongDesc, #editLongDesc { min-height: 340px; }
