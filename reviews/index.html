@@ -55,12 +55,12 @@
             <a class="nav-item active" data-page="reviews" href="/reviews/">
                 <svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
                 <span>Reviews</span>
-                <span class="badge red" id="reviewBadge">0</span>
+                <span class="badge red" id="reviewBadge" style="display:none">0</span>
             </a>
             <a class="nav-item" data-page="notifications" href="/notifications/">
                 <svg viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2zm-2 1H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z"/></svg>
                 <span>Notifications</span>
-                <span class="badge red" id="notifBadge">0</span>
+                <span class="badge red" id="notifBadge" style="display:none">0</span>
             </a>
             <a class="nav-item" data-page="profile" href="/profile/">
                 <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>
@@ -96,8 +96,8 @@
             <div class="page-section active" id="section-reviews">
                 <h3 style="margin-bottom:12px;">App Reviews</h3>
                 <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px;">
-                    <select id="reviewAppSelect" onchange="loadReviews()" style="background:var(--bg-input);border:1px solid var(--border-color);border-radius:8px;padding:8px 14px;color:var(--text-light);font-size:14px;">
-                        <option value="">Select App</option>
+                    <select id="reviewAppSelect" onchange="renderReviews()" style="background:var(--bg-input);border:1px solid var(--border-color);border-radius:8px;padding:8px 14px;color:var(--text-light);font-size:14px;">
+                        <option value="">All apps</option>
                     </select>
                 </div>
                 <div class="review-filter" id="reviewFilter">
