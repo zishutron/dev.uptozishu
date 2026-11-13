@@ -131,6 +131,12 @@
                                 <input type="text" id="upShortDesc" required placeholder="Brief description..." />
                             </div>
                         </div>
+                        <div class="form-row full">
+                            <div class="form-group">
+                                <label>Full Description <span class="required">*</span></label>
+                                <textarea id="upLongDesc" rows="15" required placeholder="Detailed description..."></textarea>
+                            </div>
+                        </div>
                         <div class="step-nav">
                             <button type="button" class="btn-primary" onclick="nextStep(2)">Next Step</button>
                         </div>
@@ -138,10 +144,11 @@
 
                     <!-- Step 2 -->
                     <div class="step-content" id="step2">
-                        <div class="form-row full">
+                        <div class="form-row">
                             <div class="form-group">
-                                <label>Full Description <span class="required">*</span></label>
-                                <textarea id="upLongDesc" rows="12" required placeholder="Detailed description..."></textarea>
+                                <label>Developer Name</label>
+                                <input type="text" id="upDeveloperName" maxlength="60" placeholder="Name shown on the store (optional)" />
+                                <small style="color:var(--text-gray);font-size:12px">Leave empty to use your profile name.</small>
                             </div>
                         </div>
                         <div class="form-row">
