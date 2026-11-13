@@ -1163,3 +1163,15 @@
         .shot-ghost .shot-x { display: none; }
 
         #upLongDesc, #editLongDesc { min-height: 340px; }
+
+        /* Splash / loading screen: follows the console theme */
+        .loading-overlay { display: flex; background: var(--bg-dark); opacity: 0; visibility: hidden; pointer-events: none; transition: opacity .35s ease, visibility .35s ease; gap: 14px; }
+        .loading-overlay.show { opacity: 1; visibility: visible; pointer-events: all; }
+        .zt-brand { display: flex; font-size: clamp(34px, 11vw, 56px); font-weight: 800; letter-spacing: .02em; line-height: 1; user-select: none; }
+        .zt-brand span { color: var(--text-gray); opacity: .45; animation: zt-lit 1.9s ease-in-out infinite; animation-delay: calc(var(--i) * .11s); }
+        @keyframes zt-lit {
+            0%, 34%, 100% { color: var(--text-gray); opacity: .45; text-shadow: none; transform: translateY(0); }
+            10%, 18% { color: var(--text-light); opacity: 1; text-shadow: 0 0 14px var(--primary-light), 0 0 30px var(--primary); transform: translateY(-2px); }
+        }
+        .zt-caption { color: var(--text-gray); font-size: 13px; min-height: 16px; }
+        @media (prefers-reduced-motion: reduce) { .zt-brand span { animation: none; opacity: 1; color: var(--text-light); } }

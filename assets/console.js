@@ -56,9 +56,15 @@
         // ============================================
         // LOADING
         // ============================================
-        function showLoading(show, text = 'Loading...') {
-            if (show) { loadingText.textContent = text;
-                loadingOverlay.classList.add('show'); } else loadingOverlay.classList.remove('show');
+        const SPLASH_MIN_MS = 900; // let the UptoZishu light sweep be seen on every page change
+        function showLoading(show, text = '') {
+            if (show) {
+                loadingText.textContent = /^(Loading|Starting)/.test(text) ? '' : text;
+                loadingOverlay.classList.add('show');
+            } else {
+                const wait = Math.max(0, SPLASH_MIN_MS - performance.now());
+                setTimeout(() => loadingOverlay.classList.remove('show'), wait);
+            }
         }
 
         // ============================================
