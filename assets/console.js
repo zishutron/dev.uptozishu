@@ -799,7 +799,7 @@
                         alert('App saved as draft! You can publish it later.');
                     } else {
                         addNotification(`App "${appData.name}" is now LIVE on the store!`);
-                        alert('App published successfully! It is now live on ZishuTron Apps. It appears on the website within about 10 minutes.');
+                        alert('App published successfully! It is now live on UptoZishu. It appears on the website within about 10 minutes.');
                     }
                     switchPage('myapps');
                 }).catch(err => {
@@ -1432,7 +1432,7 @@
             loadDraft(); // the loading screen stays until Firebase says who is signed in
         });
 
-        console.log('🚀 ZishuTron Apps Console loaded');
+        console.log('🚀 UptoZishu Console loaded');
         console.log('📦 Features: Dashboard, App Management, Upload Wizard, Analytics, Reviews, Notifications, Profile, Settings');
         console.log('🔄 Real-time: Apps sync automatically with Firebase');
         console.log('📝 Drafts: Save progress and continue later');
