@@ -236,6 +236,7 @@
 
         // Runs once the user is signed in: prepares only the page that is open
         function initPage() {
+            if (currentPage === 'dashboard' || currentPage === 'analytics') loadStats();
             if (currentPage === 'dashboard') updateDashboard();
             if (currentPage === 'notifications') renderNotifications();
             if (currentPage === 'analytics') populateAnalyticsSelect();
@@ -277,11 +278,48 @@
                 if (currentPage === 'dashboard') updateDashboard();
                 if (currentPage === 'myapps') renderMyApps();
                 if (currentPage === 'analytics') populateAnalyticsSelect();
-                if (currentPage === 'reviews') populateReviewSelect();
+                if (currentPage === 'reviews') { populateReviewSelect(); renderReviews(); }
                 showLoading(false);
             }, err => { showLoading(false);
                 console.error(err); });
         }
+
+        // ============================================
+        // DAILY STATS (written by the store on every download, IST day)
+        // ============================================
+        const DAY_MS = 86400000, IST_MS = 19800000;
+        const dayKey = ts => new Date(ts + IST_MS).toISOString().slice(0, 10);
+        let allStats = {};
+        function loadStats() {
+            db.ref('stats').on('value', snap => {
+                allStats = snap.val() || {};
+                if (currentPage === 'dashboard') updateDashboard();
+                if (currentPage === 'analytics' && $('anaAppSelect').value) loadAppAnalytics();
+            }, err => console.warn('stats not readable', err));
+        }
+        function lastDays(n) {
+            const out = [], now = Date.now();
+            for (let i = n - 1; i >= 0; i--) {
+                const t = now - i * DAY_MS, d = new Date(t + IST_MS);
+                out.push({
+                    key: dayKey(t),
+                    weekday: d.toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' }),
+                    dm: d.getUTCDate() + '/' + (d.getUTCMonth() + 1)
+                });
+            }
+            return out;
+        }
+        const dayCount = (ids, key) => ids.reduce((s, id) => s + ((allStats[id] && allStats[id][key]) || 0), 0);
+        function barChart(days, values, n) {
+            const max = Math.max(1, ...values);
+            const every = n <= 7 ? 1 : (n <= 30 ? 5 : 15);
+            return '<div class="bars">' + values.map((v, i) => {
+                const lbl = n <= 7 ? days[i].weekday : (((days.length - 1 - i) % every === 0) ? days[i].dm : '');
+                const h = v ? Math.max(6, Math.round(v / max * 120)) : 3;
+                return `<div class="bar-col" title="${days[i].key}: ${v}"><span class="bar-val">${n <= 7 && v ? v : ''}</span><div class="bar${v ? '' : ' zero'}" style="height:${h}px"></div><span class="bar-lbl">${lbl}</span></div>`;
+            }).join('') + '</div>';
+        }
+        function setBadge(el, n) { el.textContent = n; el.style.display = n > 0 ? '' : 'none'; }
 
         // ============================================
         // DASHBOARD
@@ -295,13 +333,14 @@
             const avgRating = ratings.length ? (ratings.reduce((s, r) => s + r, 0) / ratings.length) : 0;
             const live = allApps.filter(a => a.status === 'live' || a.status === 'approved').length;
 
-            const monthAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
-            const monthly = allApps.reduce((s, a) => {
-                if (a.downloadDate && new Date(a.downloadDate).getTime() > monthAgo) {
-                    return s + (a.downloadCount || 0);
-                }
-                return s;
-            }, 0);
+            const ids = allApps.map(x => x.id);
+            let monthly;
+            if (Object.keys(allStats).length) {
+                monthly = lastDays(30).reduce((s, d) => s + dayCount(ids, d.key), 0);
+            } else {
+                const monthAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
+                monthly = allApps.reduce((s, x) => (x.downloadDate && new Date(x.downloadDate).getTime() > monthAgo) ? s + (x.downloadCount || 0) : s, 0);
+            }
 
             $('statTotalApps').textContent = total;
             $('statDownloads').textContent = downloads.toLocaleString();
@@ -312,17 +351,14 @@
             $('statLiveApps').textContent = live;
             $('appCountBadge').textContent = total;
 
-            // Chart dummy
-            const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-            const maxHeight = 100;
-            days.forEach((day, i) => {
-                const val = Math.floor(Math.random() * 80 + 10);
-                const el = $(`chartDay${i + 1}`);
-                if (el) {
-                    el.style.height = `${(val / 100) * maxHeight}%`;
-                    el.title = `${day}: ${val} downloads`;
-                }
-            });
+            // Real downloads per day (last 7 days) from the store's daily counter
+            const days7 = lastDays(7);
+            const vals7 = days7.map(d => dayCount(ids, d.key));
+            $('dashChart').innerHTML = barChart(days7, vals7, 7);
+            const sum7 = vals7.reduce((s, v) => s + v, 0);
+            $('dashChartNote').textContent = sum7
+                ? `${sum7} download${sum7 === 1 ? '' : 's'} in the last 7 days`
+                : 'No downloads recorded in the last 7 days. Daily tracking starts from the first download after this update.';
 
             const topApps = [...allApps].sort((a, b) => (b.downloadCount || 0) - (a.downloadCount || 0)).slice(0, 5);
             const topList = $('topAppsList');
@@ -333,7 +369,7 @@
                 topApps.forEach((app, i) => {
                     topList.innerHTML +=
                         `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border-color);">
-                            <span>${i + 1}. ${app.name}</span>
+                            <span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:8px;">${i + 1}. ${escHtml(app.name)}</span>
                             <span style="color:var(--primary);">${app.downloadCount || 0}</span>
                         </div>`;
                 });
@@ -1052,10 +1088,12 @@
         // ============================================
         function populateAnalyticsSelect() {
             const select = $('anaAppSelect');
+            const keep = select.value;
             select.innerHTML = '<option value="">Select App</option>';
             allApps.forEach(app => {
                 select.innerHTML += `<option value="${app.id}">${escHtml(app.name)}</option>`;
             });
+            if (keep) select.value = keep;
             const pre = new URLSearchParams(location.search).get('app');
             if (pre && !populateAnalyticsSelect.done && allApps.some(a => a.id === pre)) {
                 populateAnalyticsSelect.done = true;
@@ -1067,6 +1105,9 @@
         function viewAppAnalytics(appId) {
             location.href = '/analytics/?app=' + encodeURIComponent(appId);
         }
+
+        let anaDays = 7;
+        function setAnaPeriod(n) { anaDays = n; loadAppAnalytics(); }
 
         function loadAppAnalytics() {
             const appId = $('anaAppSelect').value;
@@ -1084,13 +1125,20 @@
             const app = allApps.find(a => a.id === appId);
             if (!app) return;
 
+            const days = lastDays(anaDays);
+            const vals = days.map(d => dayCount([appId], d.key));
+            const total = vals.reduce((s, v) => s + v, 0);
+            const best = Math.max(0, ...vals);
+            const bestDay = best ? days[vals.indexOf(best)].dm : '-';
+            const today = vals[vals.length - 1];
+
             container.innerHTML = `
                 <div style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius-sm);padding:20px;">
                     <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px;">
-                        <img src="${app.icon || 'https://img.icons8.com/color/144/android-os.png'}" style="width:48px;height:48px;border-radius:12px;object-fit:cover;border:1px solid var(--border-color);">
-                        <div>
-                            <div style="font-size:18px;font-weight:600;">${app.name}</div>
-                            <div style="color:var(--text-gray);">${app.version || 'v1.0'} • ${app.category || 'General'}</div>
+                        <img src="${escHtml(app.icon || 'https://img.icons8.com/color/144/android-os.png')}" style="width:48px;height:48px;border-radius:12px;object-fit:cover;border:1px solid var(--border-color);">
+                        <div style="min-width:0">
+                            <div style="font-size:18px;font-weight:600;overflow-wrap:anywhere">${escHtml(app.name)}</div>
+                            <div style="color:var(--text-gray);">${escHtml(app.version || 'v1.0')} • ${escHtml(app.category || 'General')}</div>
                         </div>
                     </div>
                     <div class="stats-grid" style="margin-bottom:16px;">
@@ -1099,13 +1147,33 @@
                         <div class="stat-card"><div class="stat-value">${app.rating || 'N/A'}</div><div class="stat-label">Rating</div></div>
                         <div class="stat-card"><div class="stat-value">${app.reviewCount || 0}</div><div class="stat-label">Reviews</div></div>
                     </div>
-                    <div style="background:var(--bg-input);border-radius:var(--radius-sm);padding:16px;text-align:center;color:var(--text-gray);">
-                        <div style="font-size:32px;margin-bottom:8px;">📊</div>
-                        <p>Detailed charts will be displayed here</p>
-                        <p style="font-size:13px;">Daily, Weekly, Monthly charts • Country-wise downloads</p>
+                    <h4 style="margin-bottom:8px;">Downloads per day</h4>
+                    <div class="period-tabs">
+                        ${[7, 30, 90].map(n => `<button class="${n === anaDays ? 'active' : ''}" onclick="setAnaPeriod(${n})">${n} days</button>`).join('')}
                     </div>
+                    ${barChart(days, vals, anaDays)}
+                    <div class="ana-sum">
+                        <div><b>${total}</b><span>Last ${anaDays} days</span></div>
+                        <div><b>${today}</b><span>Today</span></div>
+                        <div><b>${best}</b><span>Best day${best ? ' (' + bestDay + ')' : ''}</span></div>
+                    </div>
+                    ${total === 0 ? '<div class="chart-note">No downloads recorded in this period yet. Daily tracking starts from the first download after the update.</div>' : ''}
+                    <h4 style="margin:20px 0 6px;">Rating breakdown</h4>
+                    <div id="anaRatings" class="chart-note">Loading…</div>
                 </div>
             `;
+
+            db.ref('reviews/' + appId).once('value').then(snap => {
+                const box = $('anaRatings');
+                const rv = Object.values(snap.val() || {});
+                if (!rv.length) { box.textContent = 'No reviews yet.'; return; }
+                const cnt = [0, 0, 0, 0, 0, 0];
+                rv.forEach(r => { const s = Math.min(5, Math.max(1, Math.round(r.rating || 5))); cnt[s]++; });
+                const avg = (rv.reduce((s, r) => s + (Number(r.rating) || 5), 0) / rv.length).toFixed(1);
+                box.className = '';
+                box.innerHTML = `<div style="font-size:13px;margin-bottom:6px;"><b>${avg}</b> ★ from ${rv.length} review${rv.length === 1 ? '' : 's'}</div>` +
+                    [5, 4, 3, 2, 1].map(s => `<div class="rate-row"><span style="width:24px">${s} ★</span><div class="track"><div class="fill" style="width:${Math.round(cnt[s] / rv.length * 100)}%"></div></div><span style="width:22px;text-align:right">${cnt[s]}</span></div>`).join('');
+            }).catch(() => { $('anaRatings').textContent = 'Could not load reviews.'; });
         }
 
         // ============================================
@@ -1113,29 +1181,22 @@
         // ============================================
         function populateReviewSelect() {
             const select = $('reviewAppSelect');
-            select.innerHTML = '<option value="">Select App</option>';
+            const keep = select.value;
+            select.innerHTML = '<option value="">All apps</option>';
             allApps.forEach(app => {
-                select.innerHTML += `<option value="${app.id}">${escHtml(app.name)}</option>`;
+                select.innerHTML += `<option value="${escHtml(app.id)}">${escHtml(app.name)}</option>`;
             });
+            if (keep) select.value = keep;
         }
 
+        // Reviews are stored as reviews/<appId>/<reviewId>; listen once to all of them and show the developer's apps only
         function loadReviews() {
-            const appId = $('reviewAppSelect').value;
-            if (!appId) {
-                $('reviewsList').innerHTML = `
-                    <div class="empty-state">
-                        <svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
-                        <h3>Select an App</h3>
-                        <p>Choose an app to see its reviews.</p>
-                    </div>
-                `;
-                return;
-            }
-
-            db.ref(`reviews/${appId}`).on('value', snapshot => {
-                const data = snapshot.val();
-                allReviews = data || {};
-                renderReviews();
+            db.ref('reviews').off('value');
+            db.ref('reviews').on('value', snapshot => {
+                allReviews = snapshot.val() || {};
+                if (currentPage === 'reviews') renderReviews();
+            }, err => {
+                $('reviewsList').innerHTML = '<div class="empty-state"><h3>Could not load reviews</h3><p>' + escHtml(err && err.message || '') + '</p></div>';
             });
         }
 
@@ -1143,14 +1204,20 @@
             const container = $('reviewsList');
             container.innerHTML = '';
 
+            const names = {};
+            allApps.forEach(a => { names[a.id] = a.name; });
+            const selected = $('reviewAppSelect').value;
             let allRev = [];
-            const appId = $('reviewAppSelect').value;
-            if (appId && allReviews[appId]) {
-                Object.keys(allReviews[appId]).forEach(revId => {
-                    const rev = allReviews[appId][revId];
-                    allRev.push({ ...rev, id: revId, appId: appId });
-                });
-            }
+            Object.keys(names).forEach(appId => {
+                if (selected && selected !== appId) return;
+                const bucket = allReviews[appId] || {};
+                Object.keys(bucket).forEach(revId => allRev.push({ ...bucket[revId], id: revId, appId }));
+            });
+
+            // red badge = reviews without a reply, across all apps
+            let unreplied = 0;
+            Object.keys(names).forEach(appId => Object.values(allReviews[appId] || {}).forEach(r => { if (!r.reply) unreplied++; }));
+            setBadge($('reviewBadge'), unreplied);
 
             if (currentReviewFilter !== 'all') {
                 const star = parseInt(currentReviewFilter);
@@ -1162,7 +1229,7 @@
                     <div class="empty-state">
                         <svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
                         <h3>No Reviews</h3>
-                        <p>This app doesn't have any reviews yet.</p>
+                        <p>${selected ? "This app doesn't have any reviews yet." : 'No reviews on your apps yet.'}</p>
                     </div>
                 `;
                 return;
@@ -1171,18 +1238,20 @@
             allRev.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0)).forEach(rev => {
                 let stars = '';
                 for (let i = 0; i < 5; i++) stars += i < Math.round(rev.rating || 5) ? '★' : '☆';
+                const when = rev.timestamp ? new Date(rev.timestamp).toLocaleDateString() : '';
                 const div = document.createElement('div');
                 div.className = 'review-item';
                 div.innerHTML = `
+                    ${selected ? '' : `<div class="rev-app">${escHtml(names[rev.appId])}</div>`}
                     <div class="rev-head">
-                        <span class="rev-user">${rev.author || 'Anonymous'}</span>
+                        <span class="rev-user">${escHtml(rev.author || 'Anonymous')}${when ? ` <small style="color:var(--text-gray);font-weight:400">• ${escHtml(when)}</small>` : ''}</span>
                         <span class="rev-stars">${stars}</span>
                     </div>
-                    <div class="rev-text">${rev.text || ''}</div>
-                    ${rev.reply ? `<div class="dev-reply"><strong>Developer Reply:</strong> ${rev.reply}</div>` : ''}
+                    <div class="rev-text">${escHtml(rev.text || '')}</div>
+                    ${rev.reply ? `<div class="dev-reply"><strong>Developer Reply:</strong> ${escHtml(rev.reply)}</div>` : ''}
                     <div class="rev-reply">
-                        <input type="text" placeholder="Reply to this review..." id="replyInput_${rev.id}" />
-                        <button onclick="submitReply('${rev.appId}','${rev.id}')">Reply</button>
+                        <input type="text" placeholder="${rev.reply ? 'Edit your reply...' : 'Reply to this review...'}" id="replyInput_${escHtml(rev.id)}" />
+                        <button onclick="submitReply('${escHtml(rev.appId)}','${escHtml(rev.id)}')">Reply</button>
                     </div>
                 `;
                 container.appendChild(div);
@@ -1205,7 +1274,6 @@
             db.ref(`reviews/${appId}/${revId}/reply`).set(replyText).then(() => {
                 input.value = '';
                 addNotification('Reply sent successfully!');
-                renderReviews();
             });
         }
 
@@ -1217,7 +1285,7 @@
             db.ref(`notifications/${currentUser.uid}`).on('value', snapshot => {
                 const data = snapshot.val();
                 allNotifications = data ? Object.values(data).sort((a, b) => b.timestamp - a.timestamp) : [];
-                $('notifBadge').textContent = allNotifications.filter(n => !n.read).length;
+                setBadge($('notifBadge'), allNotifications.filter(n => !n.read).length);
                 if (currentPage === 'notifications') renderNotifications();
             });
         }
@@ -1251,7 +1319,7 @@
                     <div class="notif-icon">
                         <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg>
                     </div>
-                    <div class="notif-text">${n.text}</div>
+                    <div class="notif-text">${escHtml(n.text)}</div>
                     <div class="notif-time">${new Date(n.timestamp).toLocaleDateString()}</div>
                 `;
                 container.appendChild(div);
@@ -1266,7 +1334,7 @@
                     }
                 });
             }
-            $('notifBadge').textContent = 0;
+            setBadge($('notifBadge'), 0);
         }
 
         // ============================================
