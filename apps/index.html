@@ -115,157 +115,195 @@
         </main>
     </div>
 
-    <div class="modal-overlay" id="editModal" onclick="if(event.target===this)closeEditModal()">
-        <div class="modal-content">
-            <button class="modal-close" onclick="closeEditModal()">✕</button>
-            <h4 style="margin-bottom:16px;">Edit App</h4>
-            <div class="edit-card">
-                <form id="editForm" onsubmit="saveFullEdit(event)">
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>App Name <span class="required">*</span></label>
-                            <input type="text" id="editName" required />
-                        </div>
-                        <div class="form-group">
-                            <label>Category <span class="required">*</span></label>
-                            <select id="editCategory">
-                                <option>Games</option><option>Social</option><option>AI</option>
-                                <option>Entertainment</option><option>Tools</option><option>Shopping</option>
-                                <option>Music</option><option>Education</option><option>Health</option>
-                                <option>Photography</option><option>Finance</option><option>Travel</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Package Name</label>
-                            <input type="text" id="editPackage" />
-                        </div>
-                        <div class="form-group">
-                            <label>Version</label>
-                            <input type="text" id="editVersion" />
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label>Short Description <span class="required">*</span></label>
-                        <input type="text" id="editShortDesc" required />
-                    </div>
-                    <div class="form-group">
-                        <label>Developer Name</label>
-                        <input type="text" id="editDeveloperName" maxlength="60" placeholder="Leave empty to use your profile name" />
-                    </div>
-                    <div class="form-group">
-                        <label>Full Description <span class="required">*</span></label>
-                        <textarea id="editLongDesc" rows="15" required></textarea>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>APK URL</label>
-                            <input type="url" id="editApkUrl" placeholder="https://example.com/app.apk" />
-                        </div>
-                        <div class="form-group">
-                            <label>APK Size (MB)</label>
-                            <input type="text" id="editSize" placeholder="42 MB" />
-                        </div>
-                    </div>
-                    <!-- Icon: only file upload -->
-                    <div class="form-group">
-                        <label>App Icon <span class="required">*</span></label>
-                        <input type="file" id="editIconFile" accept="image/*" onchange="previewEditIcon(this)" />
-                        <div class="preview-box" id="editIconPreview"></div>
-                    </div>
-                    <!-- Banner: only file upload -->
-                    <div class="form-group">
-                        <label>Feature Banner</label>
-                        <input type="file" id="editBannerFile" accept="image/*" onchange="previewEditBanner(this)" />
-                        <div class="preview-box" id="editBannerPreview"></div>
-                    </div>
-                    <!-- Screenshots: only file upload -->
-                    <div class="form-group">
-                        <label>Screenshots (reorder, remove or add more)</label>
-                        <input type="file" id="editScreenshots" accept="image/*" multiple style="display:none" />
-                        <div class="preview-box" id="editScreensPreview"></div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Tags (comma separated)</label>
-                            <input type="text" id="editTags" />
-                        </div>
-                        <div class="form-group">
-                            <label>Support Email</label>
-                            <input type="email" id="editSupportEmail" />
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Privacy Policy URL</label>
-                            <input type="url" id="editPrivacy" />
-                        </div>
-                        <div class="form-group">
-                            <label>Website</label>
-                            <input type="url" id="editWebsite" />
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>YouTube Video ID</label>
-                            <input type="text" id="editYoutube" placeholder="dQw4w9WgXcQ" />
-                        </div>
-                        <div class="form-group">
-                            <label>Minimum Android</label>
-                            <input type="text" id="editMinAndroid" placeholder="5.0" />
-                        </div>
-                    </div>
-                    <div class="form-row full">
-                            <div class="form-group">
-                                <label>App Permissions</label>
-                                <div class="perm-chips" id="editPermChips"></div>
-                                <textarea id="editPermissions" rows="2" placeholder="Internet, Storage, Camera" oninput="renderPermChips('edit')"></textarea>
-                                <small class="perm-hint">Tap the permissions your app asks for, or type your own (comma separated). Shown to users on the app page.</small>
-                            </div>
-                        </div>
-                    <div class="form-group">
-                        <label>What's New</label>
-                        <textarea id="editWhatsNew" rows="4" placeholder="Bug fixes, new features..."></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label>Status</label>
-                        <select id="editStatus">
-                            <option value="live">Live</option>
-                            <option value="draft">Draft</option>
-                        </select>
-                    </div>
-                    <input type="hidden" id="editAppId" />
-                    <button type="submit" class="btn-primary">Save Changes</button>
-                </form>
-            </div>
+    <!-- APP DETAILS -->
+    <div class="modal-overlay sheet-overlay" id="detailsModal" onclick="if(event.target===this)closeDetailsModal()">
+        <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="detTitle">
+            <header class="sheet-head">
+                <img id="detIcon" alt="" />
+                <div class="sheet-title">
+                    <h3 id="detTitle">App</h3>
+                    <p id="detSub"></p>
+                </div>
+                <span class="pill" id="detStatus"></span>
+                <button type="button" class="sheet-x" onclick="closeDetailsModal()" aria-label="Close">✕</button>
+            </header>
+            <div class="sheet-body" id="detBody"></div>
+            <footer class="sheet-foot">
+                <button type="button" class="btn-ghost" id="detAnalytics">Analytics</button>
+                <button type="button" class="btn-ghost" id="detUpdate">Update</button>
+                <button type="button" class="btn-primary" id="detEdit">Edit app</button>
+            </footer>
         </div>
     </div>
 
-    <!-- UPDATE MODAL -->
-    <div class="modal-overlay" id="updateModal" onclick="if(event.target===this)closeUpdateModal()">
-        <div class="modal-content">
-            <button class="modal-close" onclick="closeUpdateModal()">✕</button>
-            <h4 style="margin-bottom:16px;">Update App</h4>
-            <form id="updateForm" onsubmit="submitUpdate(event)">
-                <div class="form-group">
-                    <label>New Version <span class="required">*</span></label>
-                    <input type="text" id="updateVersion" required placeholder="v2.0.0" />
+    <!-- EDIT / UPDATE (one form, two modes) -->
+    <div class="modal-overlay sheet-overlay" id="editModal" onclick="if(event.target===this)closeEditModal()">
+        <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="editTitle">
+            <header class="sheet-head">
+                <img id="editHeadIcon" alt="" />
+                <div class="sheet-title">
+                    <h3 id="editTitle">Edit app</h3>
+                    <p id="editSub"></p>
                 </div>
-                <div class="form-group">
-                    <label>APK URL <span class="required">*</span></label>
-                    <input type="url" id="updateApkUrl" required placeholder="https://example.com/app-v2.apk" />
+                <button type="button" class="sheet-x" onclick="closeEditModal()" aria-label="Close">✕</button>
+            </header>
+            <form id="editForm" onsubmit="saveFullEdit(event)" novalidate>
+                <div class="sheet-body">
+                    <div class="mode-note" id="editModeNote"></div>
+
+                    <section class="fsec" id="secBasic">
+                        <div class="fsec-head"><span class="fsec-n">1</span><div><h4>Basic info</h4><p>What people see first on your app page.</p></div></div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="editName">App name <span class="required">*</span></label>
+                                <input type="text" id="editName" maxlength="60" required />
+                            </div>
+                            <div class="form-group">
+                                <label for="editCategory">Category <span class="required">*</span></label>
+                                <select id="editCategory">
+                                    <option>Games</option><option>Social</option><option>AI</option>
+                                    <option>Entertainment</option><option>Tools</option><option>Shopping</option>
+                                    <option>Music</option><option>Education</option><option>Health</option>
+                                    <option>Photography</option><option>Finance</option><option>Travel</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="editPackage">Package name</label>
+                            <input type="text" id="editPackage" placeholder="com.company.app" autocapitalize="none" />
+                            <small class="help">The unique ID of your app, like com.company.app.</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="editShortDesc">Short description <span class="required">*</span></label>
+                            <input type="text" id="editShortDesc" maxlength="120" required />
+                            <small class="help">One line shown on the app card in the store.</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="editLongDesc">Long description <span class="required">*</span></label>
+                            <textarea id="editLongDesc" rows="15" required></textarea>
+                            <small class="help">Explain what your app does and its best features. Shown on the app page.</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="editDeveloperName">Developer name</label>
+                            <input type="text" id="editDeveloperName" maxlength="60" placeholder="Leave empty to use your profile name" />
+                            <small class="help">Shown under the app name in the store.</small>
+                        </div>
+                    </section>
+
+                    <section class="fsec fsec-release" id="secRelease">
+                        <div class="fsec-head"><span class="fsec-n">2</span><div><h4 id="relTitle">Version &amp; download</h4><p id="relSub">The file people download and what changed.</p></div></div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="editVersion">Version <span class="required req-update">*</span></label>
+                                <input type="text" id="editVersion" placeholder="v1.0.0" />
+                            </div>
+                            <div class="form-group">
+                                <label for="editSize">File size</label>
+                                <input type="text" id="editSize" placeholder="42 MB" />
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="editApkUrl">Download link (APK) <span class="required req-update">*</span></label>
+                            <input type="url" id="editApkUrl" placeholder="https://example.com/app.apk" />
+                            <small class="help">A direct link to the APK file people will download.</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="editWhatsNew">What's new <span class="required req-update">*</span></label>
+                            <textarea id="editWhatsNew" rows="4" placeholder="Bug fixes&#10;New features&#10;Performance improvements"></textarea>
+                            <small class="help">Short list of changes in this version. One point per line.</small>
+                        </div>
+                    </section>
+
+                    <section class="fsec" id="secImages">
+                        <div class="fsec-head"><span class="fsec-n">3</span><div><h4>Images</h4><p>Icon, banner and screenshots. Leave a picker alone to keep the current image.</p></div></div>
+                        <div class="form-group">
+                            <label>App icon</label>
+                            <div class="pick-row">
+                                <div class="preview-box" id="editIconPreview"></div>
+                                <label class="pick-btn" for="editIconFile">Change icon</label>
+                                <input type="file" id="editIconFile" accept="image/*" onchange="previewEditIcon(this)" hidden />
+                            </div>
+                            <small class="help">Square image, 512 × 512 works best.</small>
+                        </div>
+                        <div class="form-group">
+                            <label>Feature banner</label>
+                            <div class="pick-row">
+                                <div class="preview-box" id="editBannerPreview"></div>
+                                <label class="pick-btn" for="editBannerFile">Change banner</label>
+                                <input type="file" id="editBannerFile" accept="image/*" onchange="previewEditBanner(this)" hidden />
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Screenshots</label>
+                            <input type="file" id="editScreenshots" accept="image/*" multiple style="display:none" />
+                            <div class="preview-box" id="editScreensPreview"></div>
+                        </div>
+                    </section>
+
+                    <section class="fsec" id="secMore">
+                        <div class="fsec-head"><span class="fsec-n">4</span><div><h4>More details</h4><p>Optional, but they help people trust your app.</p></div></div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="editTags">Tags</label>
+                                <input type="text" id="editTags" placeholder="tools, notes, offline" />
+                                <small class="help">Separate with commas.</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="editMinAndroid">Minimum Android</label>
+                                <input type="text" id="editMinAndroid" placeholder="5.0" />
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="editSupportEmail">Support email</label>
+                                <input type="email" id="editSupportEmail" placeholder="help@example.com" />
+                            </div>
+                            <div class="form-group">
+                                <label for="editWebsite">Website</label>
+                                <input type="url" id="editWebsite" placeholder="https://example.com" />
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="editPrivacy">Privacy policy link</label>
+                                <input type="url" id="editPrivacy" placeholder="https://example.com/privacy" />
+                            </div>
+                            <div class="form-group">
+                                <label for="editYoutube">YouTube video ID</label>
+                                <input type="text" id="editYoutube" placeholder="dQw4w9WgXcQ" />
+                                <small class="help">Only the ID: the part after v= in the video link.</small>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="fsec" id="secPerm">
+                        <div class="fsec-head"><span class="fsec-n">5</span><div><h4>Permissions</h4><p>Tap what your app asks for, or type your own. Shown on the app page.</p></div></div>
+                        <div class="form-group">
+                            <div class="perm-chips" id="editPermChips"></div>
+                            <textarea id="editPermissions" rows="2" placeholder="Internet, Storage, Camera" oninput="renderPermChips('edit')"></textarea>
+                            <small class="help">Separate your own permissions with commas.</small>
+                        </div>
+                    </section>
+
+                    <section class="fsec" id="secStatus">
+                        <div class="fsec-head"><span class="fsec-n">6</span><div><h4>Visibility</h4><p>Draft apps are hidden from the store.</p></div></div>
+                        <div class="form-group">
+                            <label for="editStatus">Status</label>
+                            <select id="editStatus">
+                                <option value="live">Live: visible in the store</option>
+                                <option value="draft">Draft: hidden</option>
+                            </select>
+                        </div>
+                    </section>
+                    <input type="hidden" id="editAppId" />
                 </div>
-                <div class="form-group">
-                    <label>What's New <span class="required">*</span></label>
-                    <textarea id="updateWhatsNew" rows="4" required placeholder="Bug fixes&#10;New features&#10;Performance improvements"></textarea>
-                </div>
-                <input type="hidden" id="updateAppId" />
-                <button type="submit" class="btn-primary">Submit Update</button>
+                <footer class="sheet-foot">
+                    <button type="button" class="btn-ghost" onclick="closeEditModal()">Cancel</button>
+                    <button type="submit" class="btn-primary" id="editSaveBtn">Save changes</button>
+                </footer>
             </form>
         </div>
     </div>
-
 
     <!-- FIREBASE -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
