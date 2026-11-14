@@ -952,19 +952,68 @@
         // ============================================
         // VIEW APP DETAILS
         // ============================================
+        function safeHref(u) { u = String(u || '').trim(); return /^https?:\/\//i.test(u) ? u : ''; }
         function viewAppDetails(appId) {
             const app = allApps.find(a => a.id === appId);
             if (!app) return;
-            let details = `Name: ${app.name}\nPackage: ${app.package}\nVersion: ${app.version}\nCategory: ${app.category}\nStatus: ${app.status}\nDownloads: ${app.downloadCount}\nViews: ${app.views}\nRating: ${app.rating}\nAPK: ${app.downloadUrl}\nSize: ${app.size}\nDescription: ${app.description}\nShort: ${app.shortDescription}\nTags: ${app.tags}\nSupport: ${app.supportEmail}\nPrivacy: ${app.privacyPolicy}\nWebsite: ${app.website}\nYouTube: ${app.youtube}\nMin Android: ${app.minAndroid}\nWhat's New: ${app.whatsNew}`;
-            alert(details);
+            const live = app.status === 'live' || app.status === 'approved';
+            const val = v => (v === undefined || v === null || String(v).trim() === '') ? '<span class="det-empty">Not set</span>' : escHtml(String(v));
+            const n = v => Number(v || 0).toLocaleString();
+            const shots = String(app.screenshot || '').split(',').map(x => x.trim()).filter(safeHref);
+            const perms = String(app.permissions || '').split(',').map(x => x.trim()).filter(Boolean);
+            const link = (label, url, text) => {
+                const h = safeHref(url);
+                return h ? `<a href="${escHtml(h)}" target="_blank" rel="noopener"><span>${label}</span><span>${escHtml(text || h)}</span></a>` : `<div><span>${label}</span><span class="det-empty">Not set</span></div>`;
+            };
+            const yt = String(app.youtube || '').trim();
+            $('detIcon').src = app.icon || 'https://img.icons8.com/color/144/android-os.png';
+            $('detTitle').textContent = app.name || 'App';
+            $('detSub').textContent = [app.package, app.version].filter(Boolean).join(' · ');
+            const pill = $('detStatus'); pill.textContent = live ? 'Live' : 'Draft'; pill.className = 'pill ' + (live ? 'live' : 'draft');
+            $('detBody').innerHTML = `
+                <div class="det-stats">
+                    <div class="det-stat"><b>${n(app.downloadCount)}</b><span>Downloads</span></div>
+                    <div class="det-stat"><b>${n(app.views)}</b><span>Views</span></div>
+                    <div class="det-stat"><b>${app.rating ? Number(app.rating).toFixed(1) : '–'}</b><span>Rating</span></div>
+                    <div class="det-stat"><b>${n(app.reviewCount)}</b><span>Reviews</span></div>
+                </div>
+                <div class="det-card"><h5>App info</h5><dl class="det-grid">
+                    <div><dt>Category</dt><dd>${val(app.category)}</dd></div>
+                    <div><dt>Version</dt><dd>${val(app.version)}</dd></div>
+                    <div><dt>File size</dt><dd>${val(app.size)}</dd></div>
+                    <div><dt>Minimum Android</dt><dd>${val(app.minAndroid)}</dd></div>
+                    <div><dt>Developer</dt><dd>${val(app.developerName)}</dd></div>
+                    <div><dt>Last updated</dt><dd>${val(app.updatedDate || app.uploadDate)}</dd></div>
+                    <div><dt>Package name</dt><dd>${val(app.package)}</dd></div>
+                    <div><dt>Tags</dt><dd>${val(app.tags)}</dd></div>
+                </dl></div>
+                <div class="det-card"><h5>Short description</h5><p class="det-text">${val(app.shortDescription)}</p></div>
+                <div class="det-card"><h5>Long description</h5><p class="det-text">${val(app.description)}</p></div>
+                <div class="det-card"><h5>What's new</h5><p class="det-text">${val(app.whatsNew)}</p></div>
+                ${shots.length ? `<div class="det-card"><h5>Screenshots (${shots.length})</h5><div class="det-shots">${shots.map(u => `<img src="${escHtml(u)}" alt="Screenshot" loading="lazy">`).join('')}</div></div>` : ''}
+                <div class="det-card"><h5>Permissions</h5>${perms.length ? `<div class="det-chips">${perms.map(x => `<span>${escHtml(x)}</span>`).join('')}</div>` : '<span class="det-empty">None listed</span>'}</div>
+                <div class="det-card det-links"><h5>Links</h5>
+                    ${link('Download (APK)', app.downloadUrl)}
+                    ${link('Website', app.website)}
+                    ${link('Privacy policy', app.privacyPolicy)}
+                    ${app.supportEmail ? `<a href="mailto:${escHtml(app.supportEmail)}"><span>Support email</span><span>${escHtml(app.supportEmail)}</span></a>` : '<div><span>Support email</span><span class="det-empty">Not set</span></div>'}
+                    ${yt ? `<a href="https://www.youtube.com/watch?v=${encodeURIComponent(yt)}" target="_blank" rel="noopener"><span>YouTube video</span><span>${escHtml(yt)}</span></a>` : '<div><span>YouTube video</span><span class="det-empty">Not set</span></div>'}
+                </div>`;
+            $('detEdit').onclick = () => { closeDetailsModal(); openEditModal(appId); };
+            $('detUpdate').onclick = () => { closeDetailsModal(); openEditModal(appId, 'update'); };
+            $('detAnalytics').onclick = () => viewAppAnalytics(appId);
+            $('detBody').scrollTop = 0;
+            $('detailsModal').classList.add('open');
         }
+        function closeDetailsModal() { $('detailsModal').classList.remove('open'); }
 
         // ============================================
         // EDIT APP - Full, only file uploads (no URL fields for images)
         // ============================================
-        function openEditModal(appId) {
+        function openEditModal(appId, mode) {
             const app = allApps.find(a => a.id === appId);
             if (!app) return;
+            const isUpdate = mode === 'update';
             editAppId = appId;
             $('editAppId').value = appId;
             $('editName').value = app.name || '';
@@ -1009,7 +1058,26 @@
                 $('editBannerPreview').appendChild(img);
             }
             shotsEdit.setExisting(String(app.screenshot || '').split(',').map(s => s.trim()).filter(Boolean));
-            $('editModal').classList.add('open');
+            // two modes share this form: plain edit, or publishing a new version
+            const modal = $('editModal');
+            modal.classList.toggle('mode-update', isUpdate);
+            modal.dataset.mode = isUpdate ? 'update' : 'edit';
+            $('editHeadIcon').src = app.icon || 'https://img.icons8.com/color/144/android-os.png';
+            $('editTitle').textContent = isUpdate ? 'Update app' : 'Edit app';
+            $('editSub').textContent = (app.name || 'App') + (app.version ? ' · current ' + app.version : '');
+            $('editSaveBtn').textContent = isUpdate ? 'Publish update' : 'Save changes';
+            $('relTitle').textContent = isUpdate ? 'New release' : 'Version & download';
+            $('relSub').textContent = isUpdate ? 'Fill these first: the new version, its download link and what changed.' : 'The file people download and what changed.';
+            $('editModeNote').textContent = 'Publishing an update makes this version live right away. The old version number is kept in your version history. You can also change anything else below, such as the description or screenshots.';
+            if (isUpdate) {
+                $('editVersion').value = '';
+                $('editVersion').placeholder = app.version ? 'Current ' + app.version + ', enter the new one' : 'v1.0.1';
+                $('editWhatsNew').value = '';
+                $('editStatus').value = 'live';
+            }
+            $('editSaveBtn').disabled = false;
+            modal.classList.add('open');
+            const body = modal.querySelector('.sheet-body'); if (body) body.scrollTop = 0;
         }
 
         function closeEditModal() {
@@ -1072,9 +1140,25 @@
         function saveFullEdit(e) {
             e.preventDefault();
             const id = $('editAppId').value;
+            const isUpdate = $('editModal').dataset.mode === 'update';
+            const app = allApps.find(a => a.id === id);
+            if (!app) return;
+            const need = (field, msg) => { const el = $(field); if (!String(el.value || '').trim()) { alert(msg); el.focus(); return true; } return false; };
+            if (need('editName', 'Please enter the app name.')) return;
+            if (need('editShortDesc', 'Please enter a short description.')) return;
+            if (need('editLongDesc', 'Please enter the long description.')) return;
+            if (isUpdate) {
+                if (need('editVersion', 'Please enter the new version.')) return;
+                if (need('editApkUrl', 'Please enter the download link of the new APK.')) return;
+                if (need('editWhatsNew', "Please write what's new in this version.")) return;
+                const v = $('editVersion').value.trim();
+                if (v === String(app.version || '').trim() && !confirm('This version number is the same as the current one. Publish anyway?')) return;
+                if ($('editApkUrl').value.trim() === String(app.downloadUrl || '').trim() && !confirm('The download link is the same as before. Publish anyway?')) return;
+            }
+            const btn = $('editSaveBtn'), label = btn.textContent;
+            btn.disabled = true; btn.textContent = isUpdate ? 'Publishing…' : 'Saving…';
             const iconFile = $('editIconFile').files[0];
             const bannerFile = $('editBannerFile').files[0];
-            const screenshotFiles = $('editScreenshots').files;
 
             let iconUrl = null;
             let bannerUrl = null;
@@ -1087,89 +1171,57 @@
 
             Promise.all(uploadPromises).then(() => {
                 const updates = {
-                    name: $('editName').value,
+                    name: $('editName').value.trim(),
                     category: $('editCategory').value,
-                    package: $('editPackage').value,
-                    version: $('editVersion').value,
-                    shortDescription: $('editShortDesc').value,
+                    package: $('editPackage').value.trim(),
+                    version: $('editVersion').value.trim(),
+                    shortDescription: $('editShortDesc').value.trim(),
                     developerName: ($('editDeveloperName').value || '').trim() || profileDevName(),
                     description: $('editLongDesc').value,
-                    downloadUrl: $('editApkUrl').value,
-                    size: $('editSize').value,
-                    tags: $('editTags').value,
-                    supportEmail: $('editSupportEmail').value,
-                    privacyPolicy: $('editPrivacy').value,
-                    website: $('editWebsite').value,
-                    youtube: $('editYoutube').value,
-                    minAndroid: $('editMinAndroid').value,
+                    downloadUrl: $('editApkUrl').value.trim(),
+                    size: $('editSize').value.trim(),
+                    tags: $('editTags').value.trim(),
+                    supportEmail: $('editSupportEmail').value.trim(),
+                    privacyPolicy: $('editPrivacy').value.trim(),
+                    website: $('editWebsite').value.trim(),
+                    youtube: $('editYoutube').value.trim(),
+                    minAndroid: $('editMinAndroid').value.trim(),
                     permissions: $('editPermissions').value.trim(),
                     whatsNew: $('editWhatsNew').value,
-                    status: $('editStatus').value,
+                    status: isUpdate ? 'live' : $('editStatus').value,
                     updatedDate: new Date().toISOString().split('T')[0]
                 };
                 // Only update images if new files were uploaded
                 if (iconUrl) updates.icon = iconUrl;
                 if (bannerUrl) updates.banner = bannerUrl;
                 updates.screenshot = screenshotUrls.join(','); // full ordered list (removed screenshots are gone, new ones are added)
+                if (isUpdate) {
+                    const history = Array.isArray(app.versionHistory) ? app.versionHistory.slice() : [];
+                    if (app.version && app.version !== updates.version) history.push(app.version);
+                    updates.versionHistory = history;
+                }
 
-                db.ref(`apps/${id}`).update(updates).then(() => {
-                    addActivityLog(`App "${updates.name}" fully edited`);
-                    addNotification(`App "${updates.name}" updated successfully!`);
+                return db.ref(`apps/${id}`).update(updates).then(() => {
+                    if (isUpdate) {
+                        addActivityLog(`Update for "${updates.name}" to ${updates.version} published`);
+                        addNotification(`Update for "${updates.name}" is now LIVE!`);
+                    } else {
+                        addActivityLog(`App "${updates.name}" fully edited`);
+                        addNotification(`App "${updates.name}" updated successfully!`);
+                    }
                     closeEditModal();
                     renderMyApps();
-                    alert('App updated successfully!');
+                    alert(isUpdate ? 'Update published successfully!' : 'App updated successfully!');
                 });
             }).catch(err => {
-                alert('Image upload failed: ' + err.message);
-            });
+                alert((isUpdate ? 'Could not publish the update: ' : 'Could not save: ') + err.message);
+            }).then(() => { btn.disabled = false; btn.textContent = label; });
         }
 
         // ============================================
         // UPDATE APP
         // ============================================
-        function openUpdateModal(appId) {
-            const app = allApps.find(a => a.id === appId);
-            if (!app) return;
-            updateAppId = appId;
-            $('updateAppId').value = appId;
-            $('updateVersion').value = '';
-            $('updateApkUrl').value = '';
-            $('updateWhatsNew').value = '';
-            $('updateModal').classList.add('open');
-        }
-
-        function closeUpdateModal() {
-            $('updateModal').classList.remove('open');
-        }
-
-        function submitUpdate(e) {
-            e.preventDefault();
-            const id = $('updateAppId').value;
-            const version = $('updateVersion').value;
-            const apkUrl = $('updateApkUrl').value;
-            const whatsNew = $('updateWhatsNew').value;
-
-            const app = allApps.find(a => a.id === id);
-            if (!app) return;
-
-            const history = app.versionHistory || [];
-            if (app.version) history.push(app.version);
-
-            db.ref(`apps/${id}`).update({
-                version: version,
-                downloadUrl: apkUrl,
-                whatsNew: whatsNew,
-                status: 'live',
-                versionHistory: history,
-                updatedDate: new Date().toISOString().split('T')[0]
-            }).then(() => {
-                addActivityLog(`Update for "${app.name}" to v${version} published`);
-                addNotification(`Update for "${app.name}" is now LIVE!`);
-                closeUpdateModal();
-                renderMyApps();
-                alert('Update published successfully!');
-            });
-        }
+        function openUpdateModal(appId) { openEditModal(appId, 'update'); }
 
         // ============================================
         // DELETE APP
