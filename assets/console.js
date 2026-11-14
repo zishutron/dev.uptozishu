@@ -374,6 +374,8 @@
                 if (currentUser) {
                     allApps = allApps.filter(a => a.developerUid === currentUser.uid);
                 }
+                // newest apps first (push ids are time-ordered, so they also order older apps that have no timestamp)
+                allApps.sort((x, y) => (y.timestamp || 0) - (x.timestamp || 0) || (x.id < y.id ? 1 : -1));
                 syncRatings();
                 $('appCountBadge').textContent = allApps.length;
                 if (currentPage === 'dashboard') updateDashboard();
