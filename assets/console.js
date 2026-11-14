@@ -341,7 +341,7 @@
             if (currentPage === 'dashboard') updateDashboard();
             if (currentPage === 'notifications') renderNotifications();
             if (currentPage === 'analytics') populateAnalyticsSelect();
-            if (currentPage === 'reviews') loadReviews();
+            if (currentPage === 'reviews' || currentPage === 'hiddenreviews') loadReviews();
             if (currentPage === 'profile') loadProfile();
             if (currentPage === 'myapps') initAppSearch();
         }
@@ -398,6 +398,7 @@
                 if (currentPage === 'myapps') renderMyApps();
                 if (currentPage === 'analytics') populateAnalyticsSelect();
                 if (currentPage === 'reviews') { populateReviewSelect(); renderReviews(); }
+                if (currentPage === 'hiddenreviews') { populateReviewSelect(); renderHiddenReviews(); }
                 showLoading(false);
             }, err => { showLoading(false);
                 console.error(err); });
@@ -1398,6 +1399,7 @@
             db.ref('reviews').on('value', snapshot => {
                 allReviews = snapshot.val() || {};
                 if (currentPage === 'reviews') renderReviews();
+                if (currentPage === 'hiddenreviews') renderHiddenReviews();
             }, err => {
                 $('reviewsList').innerHTML = '<div class="empty-state"><h3>Could not load reviews</h3><p>' + escHtml(err && err.message || '') + '</p></div>';
             });
@@ -1421,6 +1423,7 @@
             let unreplied = 0;
             Object.keys(names).forEach(appId => Object.values(allReviews[appId] || {}).forEach(r => { if (!r.reply) unreplied++; }));
             setBadge($('reviewBadge'), unreplied);
+            const hc = $('hiddenCount'); if (hc) { let n = 0; Object.keys(names).forEach(appId => Object.values(allReviews[appId] || {}).forEach(r => { if (r && r.hidden) n++; })); hc.textContent = n; }
 
             if (currentReviewFilter !== 'all') {
                 const star = parseInt(currentReviewFilter);
@@ -1490,6 +1493,36 @@
             setTimeout(() => el.classList.remove('rev-focus'), 3500);
         }
 
+
+        // screen with all hidden reviews, where the developer can unhide them
+        function renderHiddenReviews() {
+            const container = $('reviewsList');
+            if (!container) return;
+            container.innerHTML = '';
+            const names = {};
+            allApps.forEach(a => { names[a.id] = a.name; });
+            const selected = $('reviewAppSelect').value;
+            const list = [];
+            Object.keys(names).forEach(appId => {
+                if (selected && selected !== appId) return;
+                const bucket = allReviews[appId] || {};
+                Object.keys(bucket).forEach(k => { const r = bucket[k]; if (r && typeof r === 'object' && r.hidden) list.push({ ...r, id: k, appId }); });
+            });
+            let unreplied = 0;
+            Object.keys(names).forEach(appId => Object.values(allReviews[appId] || {}).forEach(r => { if (!r.reply) unreplied++; }));
+            setBadge($('reviewBadge'), unreplied);
+            if (!list.length) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <svg viewBox="0 0 24 24"><path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46A11.8 11.8 0 0 0 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27z"/></svg>
+                        <h3>No hidden reviews</h3>
+                        <p>Reviews you hide will show up here.</p>
+                    </div>`;
+                return;
+            }
+            list.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0)).forEach(rev => container.appendChild(reviewItem(rev, names[rev.appId], !selected)));
+        }
+
         function filterReviews(star) {
             currentReviewFilter = star;
             document.querySelectorAll('.review-filter button').forEach(btn => {
@@ -1499,7 +1532,7 @@
         }
 
 
-        function rerenderReviews() { if (currentPage === 'analytics') renderAnaReviews($('anaAppSelect').value); else renderReviews(); }
+        function rerenderReviews() { if (currentPage === 'analytics') renderAnaReviews($('anaAppSelect').value); else if (currentPage === 'hiddenreviews') renderHiddenReviews(); else renderReviews(); }
 
         // hide / unhide a review: hidden reviews are removed from the store page and from the rating
         function toggleHideReview(appId, revId, hide) {
@@ -1512,7 +1545,7 @@
                 let sum = 0, n = 0;
                 Object.values(allReviews[appId] || {}).forEach(r => { if (r && r.text && !r.hidden) { sum += Math.min(5, Math.max(1, Math.round(+r.rating || 5))); n++; } });
                 db.ref('apps/' + appId).update({ rating: n ? Math.round((sum / n) * 10) / 10 : 0, reviewCount: n }).catch(() => {});
-                alert(hide ? 'Review hidden. It will disappear from the store in a few minutes.' : 'Review is visible again. It will show in the store in a few minutes.');
+                alert(hide ? 'Review hidden. It will disappear from the store in a few minutes. You can unhide it from the Hidden reviews screen.' : 'Review is visible again. It will show in the store in a few minutes.');
             }).catch(() => alert('Could not update the review. Please publish the latest Firebase rules and try again.'));
         }
 
