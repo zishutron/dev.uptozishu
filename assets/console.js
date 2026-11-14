@@ -357,7 +357,7 @@
                 ratingSynced[app.id] = true;
                 db.ref('reviews/' + app.id).once('value').then(snap => {
                     let sum = 0, n = 0;
-                    snap.forEach(c => { const r = c.val(); if (r && r.text) { sum += Math.min(5, Math.max(1, Math.round(+r.rating || 5))); n++; } });
+                    snap.forEach(c => { const r = c.val(); if (r && r.text && !r.hidden) { sum += Math.min(5, Math.max(1, Math.round(+r.rating || 5))); n++; } });
                     const avg = n ? Math.round((sum / n) * 10) / 10 : 0;
                     if (avg !== (+app.rating || 0) || n !== (app.reviewCount || 0)) {
                         return db.ref('apps/' + app.id).update({ rating: avg, reviewCount: n });
@@ -1427,7 +1427,15 @@
                         <input type="text" placeholder="${rev.reply ? 'Edit your reply...' : 'Reply to this review...'}" id="replyInput_${escHtml(rev.id)}" />
                         <button onclick="submitReply('${escHtml(rev.appId)}','${escHtml(rev.id)}')">Reply</button>
                     </div>
+                                  <div class="rev-tools">
+                        <button type="button" class="rev-hide${rev.hidden ? ' is-hidden' : ''}" onclick="toggleHideReview('${escHtml(rev.appId)}','${escHtml(rev.id)}',${rev.hidden ? 'false' : 'true'})">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">${rev.hidden ? '<path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17a5 5 0 1 1 0-10 5 5 0 0 1 0 10zm0-8a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/>' : '<path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46A11.8 11.8 0 0 0 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2z"/>'}</svg>
+                            ${rev.hidden ? 'Unhide' : 'Hide from store'}
+                        </button>
+                        ${rev.hidden ? '<span class="rev-hidden-note">Hidden: people on the store cannot see this review</span>' : ''}
+                    </div>
                 `;
+                if (rev.hidden) div.classList.add('hidden-rev');
                 container.appendChild(div);
             });
         }
@@ -1438,6 +1446,22 @@
                 btn.classList.toggle('active', btn.dataset.star == star);
             });
             renderReviews();
+        }
+
+
+        // hide / unhide a review: hidden reviews are removed from the store page and from the rating
+        function toggleHideReview(appId, revId, hide) {
+            if (hide && !confirm('Hide this review? It will disappear from the store and will not count in the rating. You can unhide it any time.')) return;
+            const ref = db.ref(`reviews/${appId}/${revId}/hidden`);
+            (hide ? ref.set(true) : ref.remove()).then(() => {
+                if (allReviews[appId] && allReviews[appId][revId]) { if (hide) allReviews[appId][revId].hidden = true; else delete allReviews[appId][revId].hidden; }
+                renderReviews();
+                // keep the app's rating and review count in step with what the store shows
+                let sum = 0, n = 0;
+                Object.values(allReviews[appId] || {}).forEach(r => { if (r && r.text && !r.hidden) { sum += Math.min(5, Math.max(1, Math.round(+r.rating || 5))); n++; } });
+                db.ref('apps/' + appId).update({ rating: n ? Math.round((sum / n) * 10) / 10 : 0, reviewCount: n }).catch(() => {});
+                alert(hide ? 'Review hidden. It will disappear from the store in a few minutes.' : 'Review is visible again. It will show in the store in a few minutes.');
+            }).catch(() => alert('Could not update the review. Please publish the latest Firebase rules and try again.'));
         }
 
         function submitReply(appId, revId) {
