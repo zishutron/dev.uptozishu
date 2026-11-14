@@ -1384,3 +1384,8 @@
 .claim-done { margin-top: 12px; font-size: 13.5px; color: var(--text-gray); }
 .claim-confirm { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; line-height: 1.45; color: var(--text-gray); cursor: pointer; }
 .claim-confirm input { margin-top: 3px; flex-shrink: 0; }
+
+.app-list-item .app-status.susp { background: rgba(239,68,68,.15); color: var(--red); }
+.adm-search { width: 100%; margin-bottom: 12px; }
+.adm-link { display: flex; flex-direction: column; gap: 2px; text-decoration: none; color: inherit; margin-top: 12px; padding: 14px 16px; }
+.adm-link span { font-size: 13px; color: var(--text-gray); }

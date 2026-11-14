@@ -329,7 +329,7 @@
         // ============================================
         // NAVIGATION
         // ============================================
-        const PAGE_URL = { dashboard: '/', myapps: '/apps/', upload: '/upload/', analytics: '/analytics/', reviews: '/reviews/', notifications: '/notifications/', profile: '/profile/', settings: '/settings/' };
+        const PAGE_URL = { dashboard: '/', admin: '/admin/', claims: '/claims/', myapps: '/apps/', upload: '/upload/', analytics: '/analytics/', reviews: '/reviews/', notifications: '/notifications/', profile: '/profile/', settings: '/settings/' };
         function switchPage(page) {
             if (page === currentPage) return;
             location.href = PAGE_URL[page] || '/';
@@ -556,7 +556,8 @@
                 const statusMap = {
                     'live': { class: 'live', label: 'Live' },
                     'approved': { class: 'live', label: 'Live' },
-                    'draft': { class: 'draft', label: 'Draft' }
+                    'draft': { class: 'draft', label: 'Draft' },
+                    'suspended': { class: 'susp', label: 'Suspended' }
                 };
                 const st = statusMap[app.status] || statusMap['live'];
                 const div = document.createElement('div');
@@ -1688,8 +1689,10 @@
             if (!currentUser) return;
             db.ref('admins/' + currentUser.uid).once('value').then(snap => {
                 isAdmin = snap.val() === true;
-                const nav = $('navClaims');
+                const nav = $('navClaims'), nav2 = $('navAdmin');
                 if (isAdmin && nav) nav.style.display = '';
+                if (isAdmin && nav2) nav2.style.display = '';
+                if (currentPage === 'admin') { if (isAdmin) initAdminPanel(); else $('section-admin').innerHTML = '<div class="empty-state"><h3>Admin only</h3><p>This page is only for the store admin.</p><a class="back-link" href="/apps/">‹ Back to my apps</a></div>'; }
                 if (isAdmin) {
                     db.ref('claims').on('value', snapAll => {
                         allClaims = snapAll.val() || {};
@@ -1697,6 +1700,7 @@
                         Object.values(allClaims).forEach(byApp => Object.values(byApp || {}).forEach(c => { if (c && c.status === 'pending') n++; }));
                         setBadge($('claimsBadge'), n);
                         if (currentPage === 'claims') renderAdminClaims();
+                        if (currentPage === 'admin') renderAdminTab();
                     });
                     if (currentPage === 'claims') db.ref('apps').once('value').then(a => { adminApps = a.val() || {}; renderAdminClaims(); });
                 } else if (currentPage === 'claims') {
@@ -1846,6 +1850,71 @@
             up[n1.path] = n1.value;
             db.ref().update(up).catch(x => alert('Could not reject: ' + ((x && x.message) || 'error')));
         }
+
+
+        // ============================================
+        // ADMIN PANEL (only for admins/<uid> = true)
+        // ============================================
+        let adminTab = 'over', adm = { apps: {}, devs: {}, reports: {}, ready: false }, admQ = '';
+        function initAdminPanel() {
+            Promise.all([db.ref('apps').once('value'), db.ref('developers').once('value'), db.ref('reports').once('value')]).then(([a, d, r]) => {
+                adm.apps = a.val() || {}; adm.devs = d.val() || {}; adm.reports = r.val() || {}; adm.ready = true; renderAdminTab();
+            }).catch(() => { $('adminBody').innerHTML = '<div class="empty-state"><h3>Could not load</h3><p>Check the Firebase rules and try again.</p></div>'; });
+        }
+        function setAdminTab(t) { adminTab = t; admQ = ''; document.querySelectorAll('#adminTabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === t)); renderAdminTab(); }
+        function admPendingClaims() { let n = 0; Object.values(allClaims).forEach(m => Object.values(m || {}).forEach(c => { if (c && c.status === 'pending') n++; })); return n; }
+        function renderAdminTab() {
+            const box = $('adminBody'); if (!box || !adm.ready) return;
+            const apps = Object.keys(adm.apps).map(id => ({ id, ...adm.apps[id] })), reps = Object.keys(adm.reports).map(id => ({ id, ...adm.reports[id] }));
+            const tr = $('tabReports'); if (tr) tr.textContent = reps.length ? '(' + reps.length + ')' : '';
+            if (adminTab === 'over') {
+                const live = apps.filter(a => a.status === 'live' || a.status === 'approved').length, susp = apps.filter(a => a.status === 'suspended').length;
+                const card = (v, l) => `<div class="stat-card"><div class="stat-value">${v}</div><div class="stat-label">${l}</div></div>`;
+                const pc = admPendingClaims();
+                box.innerHTML = `<div class="stats-grid">${card(apps.length, 'Total apps')}${card(live, 'Live')}${card(susp, 'Suspended')}${card(Object.keys(adm.devs).length, 'Developers')}${card(reps.length, 'Open reports')}${card(pc, 'Pending claims')}</div>
+                    <a class="det-card adm-link" href="/claims/"><b>Claim requests</b><span>${pc ? pc + ' waiting for your decision' : 'Nothing waiting'}</span></a>
+                    <a class="det-card adm-link" href="#" onclick="setAdminTab('reports');return false"><b>Reports</b><span>${reps.length ? reps.length + ' from store users' : 'No reports'}</span></a>`;
+            } else if (adminTab === 'apps') {
+                box.innerHTML = '<input class="search-input adm-search" id="admSearch" placeholder="Search app, package or developer" value="' + escHtml(admQ) + '"><div id="admApps"></div>';
+                $('admSearch').addEventListener('input', e => { admQ = e.target.value; renderAdmApps(); }); renderAdmApps();
+            } else if (adminTab === 'reports') {
+                reps.sort((a, b) => (b.ts || 0) - (a.ts || 0));
+                box.innerHTML = reps.length ? reps.map(r => `<div class="det-card claim-card"><div class="claim-app-info"><b>${escHtml(r.appName || r.appId)}</b><span>${escHtml(r.reason || '')} · ${claimWhen(r.ts)}${r.username ? ' · @' + escHtml(r.username) : ''}</span></div>${r.details ? '<p class="det-text">' + escHtml(r.details) + '</p>' : ''}<div class="claim-actions"><button type="button" class="btn-ghost danger" onclick="admSuspendApp('${escHtml(r.appId)}')">Suspend app</button><button type="button" class="btn-primary" onclick="admResolveReport('${escHtml(r.id)}')">Resolve</button></div></div>`).join('') : '<div class="empty-state"><h3>No reports</h3></div>';
+            } else {
+                const cnt = {}; apps.forEach(a => { if (a.developerUid) cnt[a.developerUid] = (cnt[a.developerUid] || 0) + 1; });
+                const ds = Object.keys(adm.devs).map(u => ({ uid: u, ...adm.devs[u] })).sort((a, b) => (cnt[b.uid] || 0) - (cnt[a.uid] || 0));
+                box.innerHTML = ds.length ? ds.map(d => `<div class="claim-app"><div class="claim-app-info"><b>${escHtml(d.displayName || 'Developer')}${d.username ? ' <small>@' + escHtml(d.username) + '</small>' : ''}</b><span>${escHtml(d.email || '')}</span></div><span class="pill draft">${cnt[d.uid] || 0} apps</span></div>`).join('') : '<div class="empty-state"><h3>No developers</h3></div>';
+            }
+        }
+        function renderAdmApps() {
+            const q = admQ.trim().toLowerCase(), box = $('admApps');
+            const list = Object.keys(adm.apps).map(id => ({ id, ...adm.apps[id] })).filter(a => !q || [a.name, a.package, a.developerName].join(' ').toLowerCase().includes(q)).slice(0, 60);
+            box.innerHTML = list.length ? list.map(a => { const s = a.status === 'suspended'; return `<div class="claim-app"><img src="${escHtml(a.icon || 'https://img.icons8.com/color/144/android-os.png')}" alt=""><div class="claim-app-info"><b>${escHtml(a.name || 'App')}</b><span>${escHtml(a.package || '')}</span><span>By ${escHtml(a.developerName || 'unknown')}${s && a.suspendedReason ? ' · ' + escHtml(a.suspendedReason) : ''}</span></div><span class="pill ${s ? 'rej' : a.status === 'draft' ? 'draft' : 'live'}">${s ? 'Suspended' : a.status === 'draft' ? 'Draft' : 'Live'}</span><button type="button" class="btn-ghost claim-go" onclick="${s ? 'admRestoreApp' : 'admSuspendApp'}('${escHtml(a.id)}')">${s ? 'Restore' : 'Suspend'}</button><button type="button" class="btn-ghost danger claim-go" onclick="admDeleteApp('${escHtml(a.id)}')">Delete</button></div>`; }).join('') : '<div class="chart-note">No apps found.</div>';
+        }
+        function admNote(uid, appId, text) { return uid ? { path: `notifications/${uid}/adm_${claimKey(appId)}_${Date.now()}`, value: { type: 'admin', appId, text, timestamp: Date.now(), read: false } } : null; }
+        function admSuspendApp(appId) {
+            const a = adm.apps[appId]; if (!a) return alert('App not found.');
+            const why = prompt('Suspend "' + a.name + '"? It will disappear from the store. Reason (shown to the developer):', 'Reported for breaking the store rules.');
+            if (why === null) return;
+            const up = {}; up[`apps/${appId}/status`] = 'suspended'; up[`apps/${appId}/suspendedReason`] = String(why).slice(0, 200); up[`apps/${appId}/prevStatus`] = a.status === 'suspended' ? (a.prevStatus || 'live') : (a.status || 'live');
+            const n = admNote(a.developerUid, appId, `Your app "${a.name}" was suspended.${why ? ' Reason: ' + String(why).slice(0, 150) : ''}`); if (n) up[n.path] = n.value;
+            db.ref().update(up).then(() => { adm.apps[appId] = { ...a, status: 'suspended', suspendedReason: String(why).slice(0, 200) }; renderAdminTab(); alert('Suspended. It leaves the store after the next store rebuild.'); }).catch(x => alert('Could not suspend: ' + ((x && x.message) || 'error') + '\nPublish the latest Firebase rules.'));
+        }
+        function admRestoreApp(appId) {
+            const a = adm.apps[appId]; if (!a || !confirm('Restore "' + a.name + '" to the store?')) return;
+            const up = {}; up[`apps/${appId}/status`] = a.prevStatus && a.prevStatus !== 'suspended' ? a.prevStatus : 'live'; up[`apps/${appId}/suspendedReason`] = null;
+            const n = admNote(a.developerUid, appId, `Your app "${a.name}" was restored.`); if (n) up[n.path] = n.value;
+            db.ref().update(up).then(() => { adm.apps[appId] = { ...a, status: up[`apps/${appId}/status`], suspendedReason: null }; renderAdminTab(); }).catch(x => alert('Could not restore: ' + ((x && x.message) || 'error')));
+        }
+        function admDeleteApp(appId) {
+            const a = adm.apps[appId]; if (!a) return;
+            if (!confirm('DELETE "' + a.name + '" for good? This cannot be undone.')) return;
+            if (prompt('Type DELETE to confirm') !== 'DELETE') return;
+            const up = {}; up[`apps/${appId}`] = null;
+            const n = admNote(a.developerUid, appId, `Your app "${a.name}" was removed from the store by the admin.`); if (n) up[n.path] = n.value;
+            db.ref().update(up).then(() => { delete adm.apps[appId]; renderAdminTab(); }).catch(x => alert('Could not delete: ' + ((x && x.message) || 'error')));
+        }
+        function admResolveReport(id) { db.ref('reports/' + id).remove().then(() => { delete adm.reports[id]; renderAdminTab(); }).catch(() => alert('Could not resolve. Check the Firebase rules.')); }
 
         // ============================================
         // ACTIVITY LOG
