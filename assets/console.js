@@ -1458,7 +1458,7 @@
             if (!currentUser) return;
             db.ref(`notifications/${currentUser.uid}`).on('value', snapshot => {
                 const data = snapshot.val();
-                allNotifications = data ? Object.values(data).sort((a, b) => b.timestamp - a.timestamp) : [];
+                allNotifications = data ? Object.keys(data).map(k => ({ id: k, ...data[k] })).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0)) : [];
                 setBadge($('notifBadge'), allNotifications.filter(n => !n.read).length);
                 if (currentPage === 'notifications') renderNotifications();
             });
@@ -1476,10 +1476,13 @@
         function renderNotifications() {
             const container = $('notificationsList');
             container.innerHTML = '';
+            const clearBtn = $('notifClearAll'), tip = $('notifTip');
+            if (clearBtn) clearBtn.style.display = allNotifications.length ? '' : 'none';
+            if (tip) tip.style.display = allNotifications.length ? '' : 'none';
             if (allNotifications.length === 0) {
                 container.innerHTML = `
                     <div class="empty-state">
-                        <svg viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2zm-2 1H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z"/></svg>
+                        <svg viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>
                         <h3>No Notifications</h3>
                         <p>You're all caught up!</p>
                     </div>
@@ -1496,20 +1499,58 @@
                     <div class="notif-text">${escHtml(n.text)}</div>
                     <div class="notif-time">${new Date(n.timestamp).toLocaleDateString()}</div>
                 `;
+                attachNotifPress(div, n);
                 container.appendChild(div);
             });
-            if (allNotifications.length > 0) {
-                db.ref(`notifications/${currentUser.uid}`).once('value').then(snap => {
-                    const data = snap.val();
-                    if (data) {
-                        Object.keys(data).forEach(key => {
-                            db.ref(`notifications/${currentUser.uid}/${key}/read`).set(true);
-                        });
-                    }
+            // mark the unread ones as read (only existing ones, so a deleted notification never comes back)
+            allNotifications.filter(n => !n.read).forEach(n => {
+                db.ref(`notifications/${currentUser.uid}/${n.id}`).once('value').then(snap => {
+                    if (snap.val()) db.ref(`notifications/${currentUser.uid}/${n.id}/read`).set(true);
                 });
-            }
+            });
             setBadge($('notifBadge'), 0);
         }
+
+        // long press (or right click) on a notification -> small menu to delete just that one
+        function attachNotifPress(el, n) {
+            let timer = 0, sx = 0, sy = 0;
+            const cancel = () => { clearTimeout(timer); el.classList.remove('pressing'); };
+            el.addEventListener('pointerdown', e => {
+                if (e.pointerType === 'mouse' && e.button !== 0) return;
+                sx = e.clientX; sy = e.clientY;
+                el.classList.add('pressing');
+                timer = setTimeout(() => { el.classList.remove('pressing'); if (navigator.vibrate) try { navigator.vibrate(15); } catch (x) {} openNotifMenu(n); }, 450);
+            });
+            el.addEventListener('pointermove', e => { if (Math.abs(e.clientX - sx) > 10 || Math.abs(e.clientY - sy) > 10) cancel(); });
+            ['pointerup', 'pointercancel', 'pointerleave'].forEach(t => el.addEventListener(t, cancel));
+            el.addEventListener('contextmenu', e => { e.preventDefault(); cancel(); openNotifMenu(n); });
+        }
+        function closeNotifMenu() { const m = document.getElementById('notifMenu'); if (m) m.remove(); }
+        function openNotifMenu(n) {
+            closeNotifMenu();
+            const m = document.createElement('div');
+            m.id = 'notifMenu'; m.className = 'nmenu-overlay';
+            m.innerHTML = `<div class="nmenu" role="dialog" aria-modal="true" aria-label="Notification options">
+                <p class="nmenu-text">${escHtml(n.text)}</p>
+                <button type="button" class="nmenu-del" data-a="del">Delete this notification</button>
+                <button type="button" class="nmenu-cancel" data-a="x">Cancel</button>
+            </div>`;
+            m.addEventListener('click', e => {
+                const a = e.target.closest('[data-a]');
+                if (e.target === m || (a && a.dataset.a === 'x')) { closeNotifMenu(); return; }
+                if (a && a.dataset.a === 'del') {
+                    closeNotifMenu();
+                    db.ref(`notifications/${currentUser.uid}/${n.id}`).remove().catch(() => alert('Could not delete the notification. Please try again.'));
+                }
+            });
+            document.body.appendChild(m);
+        }
+        function clearAllNotifications() {
+            if (!allNotifications.length) return;
+            if (!confirm('Delete all notifications? This cannot be undone.')) return;
+            db.ref(`notifications/${currentUser.uid}`).remove().catch(() => alert('Could not clear notifications. Please try again.'));
+        }
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') closeNotifMenu(); });
 
         // ============================================
         // ACTIVITY LOG

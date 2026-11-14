@@ -1304,3 +1304,20 @@
   .sheet-foot { padding-bottom: max(12px, env(safe-area-inset-bottom)); }
   .sheet-foot .btn-primary, .sheet-foot .btn-ghost { flex: 1; min-width: 0; padding-left: 10px; padding-right: 10px; }
 }
+
+/* notifications: clear all + long-press menu */
+.notif-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+.notif-head h3 { margin: 0; }
+.btn-clear { display: inline-flex; align-items: center; gap: 6px; background: transparent; color: var(--red); border: 1px solid var(--red); border-radius: 999px; padding: 7px 14px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.btn-clear svg { width: 16px; height: 16px; fill: currentColor; }
+.btn-clear:active { background: rgba(239,68,68,.12); }
+.notif-tip { font-size: 12.5px; color: var(--text-gray); margin-bottom: 14px; }
+.notif-item { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; transition: background .15s, transform .15s; }
+.notif-item.pressing { background: var(--bg-input); transform: scale(.985); }
+.nmenu-overlay { position: fixed; inset: 0; z-index: 10000; background: rgba(0,0,0,.6); display: flex; align-items: flex-end; justify-content: center; padding: 12px; backdrop-filter: blur(4px); }
+.nmenu { width: 100%; max-width: 420px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 10px; box-shadow: var(--shadow); animation: modalIn .2s ease; }
+.nmenu-text { font-size: 13.5px; color: var(--text-gray); line-height: 1.5; max-height: 4.6em; overflow: hidden; text-align: center; }
+.nmenu button { border: 0; border-radius: 12px; padding: 13px; font-size: 15px; font-weight: 600; cursor: pointer; }
+.nmenu-del { background: var(--red); color: #fff; }
+.nmenu-cancel { background: var(--bg-input); color: var(--text-light); }
+@media (min-width: 700px) { .nmenu-overlay { align-items: center; } }
