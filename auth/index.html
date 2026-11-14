@@ -37,11 +37,24 @@
             </div>
             <!-- Google Login -->
             <button class="google-btn" id="googleLoginBtn" onclick="signInWithGoogle()">
-                <i class="fab fa-google"></i> Sign in with Google
+                <i class="fab fa-google"></i> <span id="googleLabel">Sign in with Google</span>
             </button>
             <div class="divider">or</div>
             <form id="loginForm" onsubmit="handleAuth(event)">
                 <div id="loginMessage" class="error-msg"></div>
+                <div class="form-group su" hidden>
+                    <label for="signName">Name</label>
+                    <input type="text" id="signName" placeholder="Your name" maxlength="40" autocomplete="name" />
+                </div>
+                <div class="form-group su" hidden>
+                    <label for="signUser">Username</label>
+                    <input type="text" id="signUser" placeholder="username" maxlength="21" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" />
+                    <small class="hint" id="signUserHint"></small>
+                </div>
+                <div class="form-group su" hidden>
+                    <label for="signBio">Bio <span class="opt">(optional)</span></label>
+                    <textarea id="signBio" rows="2" maxlength="140" placeholder="Tell people a little about you"></textarea>
+                </div>
                 <div class="form-group">
                     <label for="loginEmail">Email Address</label>
                     <input type="email" id="loginEmail" placeholder="developer@example.com" required />
@@ -49,6 +62,10 @@
                 <div class="form-group">
                     <label for="loginPassword">Password</label>
                     <input type="password" id="loginPassword" placeholder="••••••••" required minlength="6" />
+                </div>
+                <div class="form-group su" hidden>
+                    <label for="signConfirm">Confirm password</label>
+                    <input type="password" id="signConfirm" placeholder="••••••••" minlength="6" autocomplete="new-password" />
                 </div>
                 <button type="submit" class="btn-primary" id="loginBtn">Sign In</button>
                 <div id="loginError" class="error-msg"></div>
@@ -59,7 +76,33 @@
         </div>
     </div>
 
-
+    <!-- FINISH PROFILE (new Google accounts, or accounts without a username) -->
+    <div class="login-page" id="completePage" style="display:none">
+        <div class="login-box">
+            <div class="logo">
+                <h1>Finish your profile</h1>
+                <p>Add a few details to set up your developer account.</p>
+            </div>
+            <form id="completeForm" onsubmit="handleComplete(event)">
+                <div class="form-group">
+                    <label for="compName">Name</label>
+                    <input type="text" id="compName" placeholder="Your name" maxlength="40" autocomplete="name" />
+                </div>
+                <div class="form-group">
+                    <label for="compUser">Username</label>
+                    <input type="text" id="compUser" placeholder="username" maxlength="21" autocapitalize="none" autocorrect="off" spellcheck="false" />
+                    <small class="hint" id="compUserHint">3–20 characters: lowercase letters, numbers, _ or .  You can't change it later.</small>
+                </div>
+                <div class="form-group">
+                    <label for="compBio">Bio <span class="opt">(optional)</span></label>
+                    <textarea id="compBio" rows="2" maxlength="140" placeholder="Tell people a little about you"></textarea>
+                </div>
+                <button type="submit" class="btn-primary" id="compBtn">Continue</button>
+                <div id="compError" class="error-msg"></div>
+                <div class="toggle-mode">Not you? <span onclick="signOutFromComplete()">Sign out</span></div>
+            </form>
+        </div>
+    </div>
 
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
