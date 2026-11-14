@@ -70,9 +70,49 @@
         // ============================================
         // AUTH
         // ============================================
+        const USER_RE = /^[a-z0-9_.]{3,20}$/;
+        let pendingSignup = false; // true while sign-up is still saving the profile, so the auth listener doesn't redirect early
+        const cleanUser = u => String(u || '').trim().toLowerCase().replace(/^@+/, '');
+        const userError = u => USER_RE.test(u) ? '' : 'Username must be 3–20 characters: lowercase letters, numbers, _ or .';
+        function authMsg(err) {
+            const c = err && err.code;
+            if (c === 'auth/email-already-in-use') return 'This email already has an account. Tap "Sign in" instead. If you use the UptoZishu store with it, your store username is used here too.';
+            if (c === 'auth/invalid-email') return 'Enter a valid email address.';
+            if (c === 'auth/weak-password') return 'Password must be at least 6 characters.';
+            if (c === 'auth/user-not-found' || c === 'auth/wrong-password' || c === 'auth/invalid-credential' || c === 'auth/invalid-login-credentials') return 'Wrong email or password.';
+            if (c === 'auth/too-many-requests') return 'Too many tries. Please wait a bit and try again.';
+            if (c === 'auth/network-request-failed') return 'No internet connection.';
+            if (err && err.message === 'taken') return 'That username is already taken.';
+            return (err && err.message) || 'Something went wrong. Please try again.';
+        }
+        // live "available / taken" hint under a username box
+        function watchUsername(inputId, hintId, idleText) {
+            const input = $(inputId), hint = $(hintId); let t = 0;
+            if (!input || !hint) return;
+            const set = (txt, cls) => { hint.textContent = txt; hint.className = 'hint' + (cls ? ' ' + cls : ''); };
+            input.addEventListener('input', () => {
+                clearTimeout(t);
+                const u = cleanUser(input.value);
+                if (!u) { set(idleText || '', ''); return; }
+                const bad = userError(u); if (bad) { set(bad, 'bad'); return; }
+                set('Checking…', '');
+                t = setTimeout(() => {
+                    db.ref('usernames/' + u).once('value').then(snap => {
+                        if (cleanUser(input.value) !== u) return;
+                        const owner = snap.val();
+                        if (owner && (!auth.currentUser || owner !== auth.currentUser.uid)) set('@' + u + ' is already taken', 'bad'); else set('@' + u + ' is available', 'ok');
+                    }).catch(() => set(idleText || '', ''));
+                }, 400);
+            });
+        }
+        watchUsername('signUser', 'signUserHint', '');
+        watchUsername('compUser', 'compUserHint', '3–20 characters: lowercase letters, numbers, _ or .  You can\'t change it later.');
+
         function switchAuthMode() {
             isLoginMode = !isLoginMode;
             const btn = $('loginBtn');
+            document.querySelectorAll('#loginForm .su').forEach(el => { el.hidden = isLoginMode; });
+            $('googleLabel').textContent = isLoginMode ? 'Sign in with Google' : 'Sign up with Google';
             if (isLoginMode) {
                 btn.textContent = 'Sign In';
                 document.querySelector('.toggle-mode').innerHTML =
@@ -85,6 +125,47 @@
             $('loginError').textContent = '';
         }
 
+        // claim the username for this uid, then write the shared profile (same records the UptoZishu store uses)
+        function saveDevProfile(user, name, uname, bio) {
+            const uref = db.ref('usernames/' + uname);
+            return uref.once('value').then(snap => {
+                const owner = snap.val();
+                if (owner && owner !== user.uid) throw new Error('taken');
+                if (owner === user.uid) return;
+                return uref.set(user.uid).catch(() => { throw new Error('taken'); });
+            }).then(() => db.ref('users/' + user.uid).once('value')).then(snap => {
+                const old = snap.val() || {};
+                return db.ref('users/' + user.uid).set({ name, username: uname, bio, createdAt: old.createdAt || Date.now() });
+            }).then(() => {
+                db.ref('developers/' + user.uid).update({ displayName: name, bio, username: uname, email: user.email || '' }).catch(() => {});
+                try { user.updateProfile({ displayName: name }); } catch (e) {}
+            });
+        }
+
+        function showComplete(user, pre) {
+            pre = pre || {};
+            loginPage.style.display = 'none';
+            $('completePage').style.display = 'flex';
+            $('compName').value = pre.name || user.displayName || '';
+            $('compBio').value = pre.bio || '';
+            showLoading(false);
+        }
+        function signOutFromComplete() {
+            auth.signOut().then(() => { try { localStorage.removeItem('stardust_uid'); } catch (e) {} location.replace('/auth/'); });
+        }
+        function handleComplete(e) {
+            e.preventDefault();
+            const user = auth.currentUser, err = $('compError'), btn = $('compBtn');
+            if (!user) { err.textContent = 'Please sign in again.'; return; }
+            const name = $('compName').value.trim(), uname = cleanUser($('compUser').value), bio = $('compBio').value.trim().slice(0, 140);
+            if (name.length < 2) { err.textContent = 'Please enter your name.'; return; }
+            const bad = userError(uname); if (bad) { err.textContent = bad; return; }
+            btn.disabled = true; btn.textContent = 'Saving...'; err.textContent = '';
+            saveDevProfile(user, name, uname, bio).then(() => goNext()).catch(x => {
+                btn.disabled = false; btn.textContent = 'Continue'; err.textContent = authMsg(x);
+            });
+        }
+
         function handleAuth(e) {
             e.preventDefault();
             const email = $('loginEmail').value.trim();
@@ -95,38 +176,52 @@
             if (!email || !password) { errorEl.textContent = 'Please fill all fields.'; return; }
             if (password.length < 6) { errorEl.textContent = 'Password must be at least 6 characters.'; return; }
 
-            btn.disabled = true;
-            btn.textContent = isLoginMode ? 'Signing in...' : 'Creating account...';
-            errorEl.textContent = '';
+            if (isLoginMode) {
+                btn.disabled = true; btn.textContent = 'Signing in...'; errorEl.textContent = '';
+                auth.signInWithEmailAndPassword(email, password)
+                    .then(() => { btn.disabled = false; btn.textContent = 'Sign In'; })
+                    .catch(err => { btn.disabled = false; btn.textContent = 'Sign In'; errorEl.textContent = authMsg(err); });
+                return;
+            }
 
-            // Clear any previous auth state to avoid conflicts
-            const authFunc = isLoginMode ?
-                auth.signInWithEmailAndPassword(email, password) :
-                auth.createUserWithEmailAndPassword(email, password);
-
-            authFunc
-                .then(result => {
-                    btn.disabled = false;
-                    btn.textContent = isLoginMode ? 'Sign In' : 'Create Account';
-                    goNext();
-                })
-                .catch(err => {
-                    btn.disabled = false;
-                    btn.textContent = isLoginMode ? 'Sign In' : 'Create Account';
-                    errorEl.textContent = err.message;
-                });
+            // sign up: Name, Username, Bio, Email, Password, Confirm password
+            const name = $('signName').value.trim(), uname = cleanUser($('signUser').value), bio = $('signBio').value.trim().slice(0, 140);
+            if (name.length < 2) { errorEl.textContent = 'Please enter your name.'; return; }
+            const bad = userError(uname); if (bad) { errorEl.textContent = bad; return; }
+            if (password !== $('signConfirm').value) { errorEl.textContent = 'Passwords do not match.'; return; }
+            btn.disabled = true; btn.textContent = 'Creating account...'; errorEl.textContent = '';
+            const reset = () => { btn.disabled = false; btn.textContent = 'Create Account'; };
+            db.ref('usernames/' + uname).once('value').catch(() => null).then(snap => {
+                if (snap && snap.val()) throw new Error('taken');
+                pendingSignup = true;
+                return auth.createUserWithEmailAndPassword(email, password);
+            }).then(result => saveDevProfile(result.user, name, uname, bio).then(() => { pendingSignup = false; goNext(); }, x => {
+                // account exists but the profile could not be saved (e.g. username just got taken): let them fix it
+                pendingSignup = false; reset(); showComplete(result.user, { name, bio });
+                $('compUser').value = uname; $('compError').textContent = authMsg(x);
+            })).catch(err => { pendingSignup = false; reset(); errorEl.textContent = authMsg(err); });
         }
 
-        // Google Sign-In
+        // Google Sign-In (works for sign in and sign up; new accounts get the "Finish your profile" step)
         function signInWithGoogle() {
             const provider = new firebase.auth.GoogleAuthProvider();
             auth.signInWithPopup(provider)
-                .then(result => {
-                    goNext();
-                })
                 .catch(err => {
+                    if (err && (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request')) return;
                     alert('Google Sign-In failed: ' + err.message);
                 });
+        }
+
+        // after any sign-in on the auth page: existing profile (e.g. from the store) -> go in, otherwise finish the profile
+        function ensureProfile(user) {
+            db.ref('users/' + user.uid).once('value').then(snap => {
+                const p = snap.val();
+                if (p && p.username) {
+                    db.ref('developers/' + user.uid).update({ username: p.username, email: user.email || '' }).catch(() => {});
+                    db.ref('developers/' + user.uid + '/displayName').once('value').then(d => { if (!d.val() && p.name) db.ref('developers/' + user.uid + '/displayName').set(p.name); }).catch(() => {});
+                    goNext();
+                } else showComplete(user, p || {});
+            }).catch(() => goNext());
         }
 
         // ============================================
@@ -148,6 +243,12 @@
             loadNotifications();
             initPage();
             localStorage.setItem('stardust_uid', user.uid);
+            // accounts without a username (older developers) finish their profile first
+            db.ref('users/' + user.uid).once('value').then(snap => {
+                const p = snap.val();
+                if (p && p.username) window._devUsername = p.username;
+                else if (!leaving) { leaving = true; location.replace('/auth/?next=' + encodeURIComponent(location.pathname + location.search)); }
+            }).catch(() => {});
             showLoading(false);
         }
 
@@ -165,7 +266,7 @@
         auth.onAuthStateChanged(user => {
             if (user) {
                 try { localStorage.setItem('stardust_uid', user.uid); } catch (e) {}
-                if (ON_AUTH_PAGE) { goNext(); return; }
+                if (ON_AUTH_PAGE) { if (!pendingSignup && !leaving) ensureProfile(user); return; }
                 if (!appContainer.classList.contains('show')) initApp(user);
             } else {
                 try { localStorage.removeItem('stardust_uid'); } catch (e) {}
@@ -1379,10 +1480,14 @@
         // ============================================
         function loadProfile() {
             if (!currentUser) return;
-            db.ref(`developers/${currentUser.uid}`).once('value').then(snap => {
+            db.ref(`users/${currentUser.uid}`).once('value').then(us => {
+                const u = us.val() || {};
+                $('profUsername').value = u.username ? '@' + u.username : '';
+                return u;
+            }).catch(() => ({})).then(u => db.ref(`developers/${currentUser.uid}`).once('value').then(snap => {
                 const data = snap.val() || {};
-                $('profName').value = data.displayName || currentUser.displayName || '';
-                $('profBio').value = data.bio || '';
+                $('profName').value = data.displayName || u.name || currentUser.displayName || '';
+                $('profBio').value = data.bio || u.bio || '';
                 $('profWebsite').value = data.website || '';
                 $('profGithub').value = data.github || '';
                 $('profEmail').value = data.supportEmail || currentUser.email || '';
@@ -1390,7 +1495,7 @@
                 if (data.photoURL) {
                     $('profilePfpPreview').src = data.photoURL;
                 }
-            });
+            }));
         }
 
         function previewProfilePfp(input) {
@@ -1423,6 +1528,8 @@
                 if (data.displayName) {
                     currentUser.updateProfile({ displayName: data.displayName });
                 }
+                // keep the public store profile in sync (username itself never changes)
+                if (window._devUsername) db.ref(`users/${currentUser.uid}`).update({ name: String(data.displayName || '').slice(0, 40), bio: String(data.bio || '').slice(0, 140) }).catch(() => {});
                 addNotification('Profile updated successfully!');
                 alert('Profile saved!');
                 loadProfile();
@@ -1464,11 +1571,13 @@
 
         function deleteAccount() {
             if (!confirm('Are you sure you want to delete your account? This cannot be undone!')) return;
-            if (!confirm('All your apps and data will be permanently deleted. Continue?')) return;
+            if (!confirm('All your apps and data will be permanently deleted. This is also your UptoZishu store account: your store profile and username will be removed too. Continue?')) return;
 
             const user = auth.currentUser;
             db.ref(`developers/${user.uid}`).remove();
             db.ref(`notifications/${user.uid}`).remove();
+            if (window._devUsername) db.ref(`usernames/${window._devUsername}`).remove().catch(() => {});
+            db.ref(`users/${user.uid}`).remove().catch(() => {});
             allApps.forEach(app => {
                 if (app.developerUid === user.uid) {
                     db.ref(`apps/${app.id}`).remove();
