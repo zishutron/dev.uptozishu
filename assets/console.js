@@ -344,6 +344,8 @@
             if (currentPage === 'reviews' || currentPage === 'hiddenreviews') loadReviews();
             if (currentPage === 'profile') loadProfile();
             if (currentPage === 'myapps') initAppSearch();
+            if (currentPage === 'claim') initClaimPage();
+            setupAdminNav();
         }
 
         // ============================================
@@ -1670,6 +1672,180 @@
             db.ref(`notifications/${currentUser.uid}`).remove().catch(() => alert('Could not clear notifications. Please try again.'));
         }
         document.addEventListener('keydown', e => { if (e.key === 'Escape') closeNotifMenu(); });
+
+
+        // ============================================
+        // CLAIM AN APP (developer) + CLAIM REQUESTS (store admin)
+        // The admin is whoever has admins/<uid> = true in Firebase (set by hand in the Firebase console).
+        // ============================================
+        let isAdmin = false, allClaims = {}, claimTab = 'pending', storeApps = [], myClaims = {}, claimApp = null, adminApps = {};
+        const claimKey = s => String(s || '').replace(/[^A-Za-z0-9_-]/g, '_');
+        const claimWhen = t => t ? new Date(+t).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+        const hostOf = u => { try { return new URL(/^https?:/i.test(u) ? u : 'https://' + u).hostname.replace(/^www\./, '').toLowerCase(); } catch (e) { return ''; } };
+        const baseDomain = h => h.split('.').slice(-2).join('.');
+
+        function setupAdminNav() {
+            if (!currentUser) return;
+            db.ref('admins/' + currentUser.uid).once('value').then(snap => {
+                isAdmin = snap.val() === true;
+                const nav = $('navClaims');
+                if (isAdmin && nav) nav.style.display = '';
+                if (isAdmin) {
+                    db.ref('claims').on('value', snapAll => {
+                        allClaims = snapAll.val() || {};
+                        let n = 0;
+                        Object.values(allClaims).forEach(byApp => Object.values(byApp || {}).forEach(c => { if (c && c.status === 'pending') n++; }));
+                        setBadge($('claimsBadge'), n);
+                        if (currentPage === 'claims') renderAdminClaims();
+                    });
+                    if (currentPage === 'claims') db.ref('apps').once('value').then(a => { adminApps = a.val() || {}; renderAdminClaims(); });
+                } else if (currentPage === 'claims') {
+                    $('section-claims').innerHTML = '<div class="empty-state"><h3>Admin only</h3><p>This page is only for the store admin.</p><a class="back-link" href="/apps/">‹ Back to my apps</a></div>';
+                }
+            }).catch(() => {
+                if (currentPage === 'claims') $('section-claims').innerHTML = '<div class="empty-state"><h3>Admin only</h3><p>This page is only for the store admin.</p></div>';
+            });
+        }
+
+        // ---------- developer side ----------
+        function initClaimPage() {
+            db.ref('apps').once('value').then(snap => {
+                storeApps = Object.entries(snap.val() || {}).map(([id, a]) => ({ id, ...a })).filter(a => a.developerUid !== currentUser.uid);
+                const pre = new URLSearchParams(location.search).get('app');
+                if (pre) { const a = storeApps.find(x => x.id === pre); if (a) { $('claimSearch').value = a.name || ''; } }
+                renderClaimResults();
+                if (pre && storeApps.some(x => x.id === pre) && !myClaims[pre]) openClaimModal(pre);
+            });
+            $('claimSearch').addEventListener('input', renderClaimResults);
+            db.ref('claims/' + currentUser.uid).on('value', snap => { myClaims = snap.val() || {}; renderMyClaims(); renderClaimResults(); });
+        }
+        function claimPill(st) { return st === 'approved' ? '<span class="pill live">Approved</span>' : st === 'rejected' ? '<span class="pill rej">Rejected</span>' : '<span class="pill draft">Pending</span>'; }
+        function renderClaimResults() {
+            const box = $('claimResults'), q = $('claimSearch').value.trim().toLowerCase();
+            if (q.length < 2) { box.innerHTML = '<div class="chart-note">Type the name or package of your app to find it.</div>'; return; }
+            const list = storeApps.filter(a => [a.name, a.package, a.developerName].join(' ').toLowerCase().includes(q)).slice(0, 30);
+            if (!list.length) { box.innerHTML = '<div class="chart-note">No app found. Check the spelling, or upload it as a new app.</div>'; return; }
+            box.innerHTML = list.map(a => {
+                const c = myClaims[a.id];
+                const act = c && c.status === 'pending' ? claimPill('pending') : c && c.status === 'approved' ? claimPill('approved') : `<button type="button" class="btn-primary claim-go" onclick="openClaimModal('${escHtml(a.id)}')">${c && c.status === 'rejected' ? 'Claim again' : 'Claim'}</button>`;
+                return `<div class="claim-app"><img src="${escHtml(a.icon || 'https://img.icons8.com/color/144/android-os.png')}" alt=""><div class="claim-app-info"><b>${escHtml(a.name || 'App')}</b><span>${escHtml(a.package || '')}</span><span>Listed by ${escHtml(a.developerName || 'unknown')}</span></div>${act}</div>`;
+            }).join('');
+        }
+        function renderMyClaims() {
+            const box = $('myClaims'), list = Object.keys(myClaims).map(k => ({ ...myClaims[k], key: k })).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+            if (!list.length) { box.innerHTML = '<div class="chart-note">No claim requests yet.</div>'; return; }
+            box.innerHTML = list.map(c => `<div class="claim-app"><img src="${escHtml(c.icon || 'https://img.icons8.com/color/144/android-os.png')}" alt=""><div class="claim-app-info"><b>${escHtml(c.appName || 'App')}</b><span>Sent ${claimWhen(c.timestamp)}</span>${c.status === 'rejected' && c.reason ? `<span class="claim-reason">Reason: ${escHtml(c.reason)}</span>` : ''}${c.status === 'approved' ? '<span>Now in your My Apps.</span>' : ''}</div>${claimPill(c.status)}${c.status === 'pending' ? `<button type="button" class="btn-ghost claim-go" onclick="withdrawClaim('${escHtml(c.key)}')">Withdraw</button>` : ''}</div>`).join('');
+        }
+        function openClaimModal(appId) {
+            const a = storeApps.find(x => x.id === appId); if (!a) return;
+            claimApp = a;
+            $('claimIcon').src = a.icon || 'https://img.icons8.com/color/144/android-os.png';
+            $('claimTitle').textContent = 'Claim ' + (a.name || 'app');
+            $('claimSub').textContent = a.package || '';
+            $('claimEmail').value = (currentUser.email || '');
+            $('claimProof').value = ''; $('claimMessage').value = ''; $('claimConfirm').checked = false; $('claimError').textContent = '';
+            $('claimSendBtn').disabled = false; $('claimSendBtn').textContent = 'Send claim';
+            $('claimModal').classList.add('open');
+        }
+        function closeClaimModal() { $('claimModal').classList.remove('open'); }
+        function submitClaim(e) {
+            e.preventDefault();
+            const err = $('claimError'), a = claimApp; if (!a) return;
+            const email = $('claimEmail').value.trim(), proof = $('claimProof').value.trim(), msg = $('claimMessage').value.trim();
+            if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { err.textContent = 'Enter a valid contact email.'; return; }
+            if (!/^https?:\/\/\S+\.\S+/i.test(proof)) { err.textContent = 'Enter the proof link, starting with https://'; return; }
+            if (msg.length < 15) { err.textContent = 'Please write a short message (at least 15 characters).'; return; }
+            if (!$('claimConfirm').checked) { err.textContent = 'Please tick the confirmation box.'; return; }
+            const btn = $('claimSendBtn'); btn.disabled = true; btn.textContent = 'Sending…'; err.textContent = '';
+            db.ref('users/' + currentUser.uid).once('value').catch(() => null).then(us => {
+                const u = (us && us.val()) || {};
+                return db.ref('claims/' + currentUser.uid + '/' + a.id).set({
+                    appId: a.id, appName: String(a.name || '').slice(0, 100), package: String(a.package || '').slice(0, 150), icon: String(a.icon || '').slice(0, 500),
+                    currentOwner: String(a.developerUid || ''), currentOwnerName: String(a.developerName || '').slice(0, 80),
+                    claimantUid: currentUser.uid, claimantName: String(u.name || currentUser.displayName || 'Developer').slice(0, 60), claimantUsername: String(u.username || ''),
+                    claimantEmail: String(currentUser.email || '').slice(0, 120), contactEmail: email.slice(0, 120), role: $('claimRole').value, proofUrl: proof.slice(0, 400), message: msg,
+                    status: 'pending', timestamp: Date.now()
+                });
+            }).then(() => { closeClaimModal(); alert('Claim sent. The store admin will check it, and you will get a notification.'); })
+              .catch(x => { btn.disabled = false; btn.textContent = 'Send claim'; err.textContent = 'Could not send the claim. Please try again. (' + ((x && x.message) || 'error') + ')'; });
+        }
+        function withdrawClaim(appId) {
+            if (!confirm('Withdraw this claim request?')) return;
+            db.ref('claims/' + currentUser.uid + '/' + appId).remove().catch(() => alert('Could not withdraw. Please try again.'));
+        }
+
+        // ---------- admin side ----------
+        function setClaimTab(t) {
+            claimTab = t;
+            document.querySelectorAll('#claimTabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === t));
+            renderAdminClaims();
+        }
+        function renderAdminClaims() {
+            const box = $('adminClaims'); if (!box) return;
+            const list = [];
+            Object.keys(allClaims).forEach(uid => Object.keys(allClaims[uid] || {}).forEach(appId => { const c = allClaims[uid][appId]; if (c && typeof c === 'object') list.push({ ...c, uid, appId }); }));
+            const pend = list.filter(c => c.status === 'pending').length;
+            const tp = $('tabPending'); if (tp) tp.textContent = pend ? '(' + pend + ')' : '';
+            const shown = list.filter(c => c.status === claimTab).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+            if (!shown.length) { box.innerHTML = `<div class="empty-state"><h3>No ${claimTab} claims</h3><p>${claimTab === 'pending' ? 'New claim requests will show up here.' : ''}</p></div>`; return; }
+            box.innerHTML = shown.map(c => {
+                const live = adminApps[c.appId] || {};
+                const hints = [];
+                const ce = hostOf((c.contactEmail || '').split('@')[1] || ''), pe = hostOf((c.claimantEmail || '').split('@')[1] || '');
+                const sites = [live.website, live.privacyPolicy, (live.supportEmail || '').split('@')[1]].map(x => baseDomain(hostOf(x || ''))).filter(Boolean);
+                const mine = [ce, pe].filter(Boolean).map(baseDomain);
+                const common = ['gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com', 'icloud.com'];
+                if (sites.length && mine.some(d => !common.includes(d) && sites.includes(d))) hints.push('<span class="hint-ok">✔ Email domain matches the app\'s website or support email</span>');
+                else hints.push('<span class="hint-warn">No email-domain match with the listing. Check the proof link carefully.</span>');
+                if (c.claimantEmail && c.contactEmail && c.claimantEmail !== c.contactEmail) hints.push('<span class="hint-warn">Contact email differs from the login email</span>');
+                const link = /^https?:\/\//i.test(c.proofUrl || '') ? `<a href="${escHtml(c.proofUrl)}" target="_blank" rel="noopener">${escHtml(c.proofUrl)}</a>` : escHtml(c.proofUrl || '');
+                const actions = c.status === 'pending' ? `<div class="claim-actions"><button type="button" class="btn-primary" onclick="approveClaim('${escHtml(c.uid)}','${escHtml(c.appId)}')">Approve</button><button type="button" class="btn-ghost danger" onclick="rejectClaim('${escHtml(c.uid)}','${escHtml(c.appId)}')">Reject</button></div>` : `<div class="claim-done">${claimPill(c.status)} ${c.status === 'rejected' && c.reason ? 'Reason: ' + escHtml(c.reason) : ''}</div>`;
+                return `<div class="det-card claim-card">
+                    <div class="claim-app"><img src="${escHtml(c.icon || 'https://img.icons8.com/color/144/android-os.png')}" alt=""><div class="claim-app-info"><b>${escHtml(c.appName)}</b><span>${escHtml(c.package)}</span><span>Now listed by ${escHtml(c.currentOwnerName || 'unknown')}</span></div></div>
+                    <dl class="det-grid">
+                        <div><dt>Claimed by</dt><dd>${escHtml(c.claimantName)}${c.claimantUsername ? ' (@' + escHtml(c.claimantUsername) + ')' : ''}</dd></div>
+                        <div><dt>Relation</dt><dd>${escHtml(c.role)}</dd></div>
+                        <div><dt>Login email</dt><dd>${escHtml(c.claimantEmail)}</dd></div>
+                        <div><dt>Contact email</dt><dd>${escHtml(c.contactEmail)}</dd></div>
+                        <div><dt>Sent</dt><dd>${claimWhen(c.timestamp)}</dd></div>
+                        <div><dt>Listing website</dt><dd>${live.website ? escHtml(live.website) : '<span class="det-empty">Not set</span>'}</dd></div>
+                    </dl>
+                    <div class="claim-block"><span>Proof link</span>${link}</div>
+                    <div class="claim-block"><span>Message</span><p class="det-text">${escHtml(c.message)}</p></div>
+                    <div class="claim-hints">${hints.join('')}</div>
+                    ${actions}
+                </div>`;
+            }).join('');
+        }
+        function claimNotify(uid, key, text, appId) {
+            return { path: `notifications/${uid}/${key}`, value: { type: 'claim', appId, text, timestamp: Date.now(), read: false } };
+        }
+        function approveClaim(uid, appId) {
+            const c = (allClaims[uid] || {})[appId]; if (!c) return;
+            if (!confirm(`Approve this claim?\n\n"${c.appName}" will move to ${c.claimantName}. They can then edit and update it, and the previous owner will no longer see it in My Apps.`)) return;
+            const now = Date.now(), up = {};
+            up[`apps/${appId}/developerUid`] = uid;
+            up[`apps/${appId}/developerName`] = c.claimantName || 'Developer';
+            up[`apps/${appId}/claimedAt`] = now;
+            up[`claims/${uid}/${appId}/status`] = 'approved';
+            up[`claims/${uid}/${appId}/decidedAt`] = now;
+            const n1 = claimNotify(uid, 'claim_' + claimKey(appId), `Your claim for "${c.appName}" was approved. It is now in your My Apps.`, appId);
+            up[n1.path] = n1.value;
+            if (c.currentOwner && c.currentOwner !== uid) { const n2 = claimNotify(c.currentOwner, 'claimout_' + claimKey(appId), `"${c.appName}" was moved to its original developer after a claim.`, appId); up[n2.path] = n2.value; }
+            db.ref().update(up).then(() => alert('Approved. The app now belongs to ' + c.claimantName + '.')).catch(x => alert('Could not approve: ' + ((x && x.message) || 'error') + '\nMake sure the latest Firebase rules are published.'));
+        }
+        function rejectClaim(uid, appId) {
+            const c = (allClaims[uid] || {})[appId]; if (!c) return;
+            const reason = prompt('Why are you rejecting this claim? (shown to the developer)', 'We could not confirm that you own this app.');
+            if (reason === null) return;
+            const now = Date.now(), up = {};
+            up[`claims/${uid}/${appId}/status`] = 'rejected';
+            up[`claims/${uid}/${appId}/reason`] = String(reason).slice(0, 200);
+            up[`claims/${uid}/${appId}/decidedAt`] = now;
+            const n1 = claimNotify(uid, 'claim_' + claimKey(appId), `Your claim for "${c.appName}" was rejected.${reason ? ' Reason: ' + String(reason).slice(0, 150) : ''}`, appId);
+            up[n1.path] = n1.value;
+            db.ref().update(up).catch(x => alert('Could not reject: ' + ((x && x.message) || 'error')));
+        }
 
         // ============================================
         // ACTIVITY LOG
