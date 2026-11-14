@@ -1330,3 +1330,14 @@
 .rev-hide.is-hidden { border-color: var(--yellow); color: var(--yellow); }
 .rev-hidden-note { font-size: 12px; color: var(--yellow); }
 .review-item.hidden-rev { opacity: .75; border-style: dashed; }
+
+/* review notifications + highlight */
+.notif-main { flex: 1; min-width: 0; }
+.notif-item.notif-link { cursor: pointer; }
+.notif-item.notif-link:hover { border-color: var(--primary); }
+.notif-item.unread { border-left: 3px solid var(--primary); }
+.notif-sub { font-size: 12.5px; color: var(--text-gray); margin-top: 4px; line-height: 1.45; overflow-wrap: anywhere; }
+.notif-stars { color: var(--gold); letter-spacing: 1px; }
+.notif-go { display: block; margin-top: 4px; color: var(--primary-light); font-weight: 600; }
+.review-item.rev-focus { animation: revFocus 3.5s ease; }
+@keyframes revFocus { 0%, 70% { box-shadow: 0 0 0 3px var(--primary); background: rgba(37,99,235,.14); } 100% { box-shadow: 0 0 0 0 transparent; } }

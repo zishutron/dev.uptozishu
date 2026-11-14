@@ -1283,6 +1283,28 @@
         let anaDays = 7;
         function setAnaPeriod(n) { anaDays = n; loadAppAnalytics(); }
 
+
+        // all reviews of the selected app, live, with reply + hide (same controls as the Reviews page)
+        let anaRevRef = null;
+        function loadAnaReviews(appId) {
+            if (anaRevRef) anaRevRef.off();
+            anaRevRef = db.ref('reviews/' + appId);
+            anaRevRef.on('value', snap => {
+                allReviews[appId] = snap.val() || {};
+                if (currentPage === 'analytics' && $('anaAppSelect').value === appId) renderAnaReviews(appId);
+            });
+        }
+        function renderAnaReviews(appId) {
+            const box = $('anaReviews');
+            if (!box || !appId) return;
+            const app = allApps.find(a => a.id === appId);
+            const bucket = allReviews[appId] || {};
+            const list = Object.keys(bucket).filter(k => bucket[k] && typeof bucket[k] === 'object').map(k => ({ ...bucket[k], id: k, appId }));
+            box.innerHTML = '';
+            if (!list.length) { box.innerHTML = '<div class="chart-note">No reviews on this app yet.</div>'; return; }
+            list.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0)).forEach(rev => box.appendChild(reviewItem(rev, app && app.name, false)));
+        }
+
         function loadAppAnalytics() {
             const appId = $('anaAppSelect').value;
             const container = $('analyticsContainer');
@@ -1335,7 +1357,12 @@
                     <h4 style="margin:20px 0 6px;">Rating breakdown</h4>
                     <div id="anaRatings" class="chart-note">Loading…</div>
                 </div>
+                <div class="ana-reviews">
+                    <h4 style="margin:22px 0 10px;">Reviews</h4>
+                    <div id="anaReviews"></div>
+                </div>
             `;
+            loadAnaReviews(appId);
 
             db.ref('reviews/' + appId).once('value').then(snap => {
                 const box = $('anaRatings');
@@ -1361,6 +1388,8 @@
                 select.innerHTML += `<option value="${escHtml(app.id)}">${escHtml(app.name)}</option>`;
             });
             if (keep) select.value = keep;
+            const pre = new URLSearchParams(location.search).get('app');
+            if (pre && !keep && allApps.some(a => a.id === pre)) select.value = pre;
         }
 
         // Reviews are stored as reviews/<appId>/<reviewId>; listen once to all of them and show the developer's apps only
@@ -1410,13 +1439,20 @@
             }
 
             allRev.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0)).forEach(rev => {
+                container.appendChild(reviewItem(rev, names[rev.appId], !selected));
+            });
+            focusReviewFromUrl();
+        }
+
+        // one review card with reply + hide controls (used by the Reviews page and by Analytics)
+        function reviewItem(rev, appName, showApp) {
                 let stars = '';
                 for (let i = 0; i < 5; i++) stars += i < Math.round(rev.rating || 5) ? '★' : '☆';
                 const when = rev.timestamp ? new Date(rev.timestamp).toLocaleDateString() : '';
                 const div = document.createElement('div');
                 div.className = 'review-item';
                 div.innerHTML = `
-                    ${selected ? '' : `<div class="rev-app">${escHtml(names[rev.appId])}</div>`}
+                    ${showApp ? `<div class="rev-app">${escHtml(appName || '')}</div>` : ''}
                     <div class="rev-head">
                         <span class="rev-user">${escHtml(rev.author || 'Anonymous')}${when ? ` <small style="color:var(--text-gray);font-weight:400">• ${escHtml(when)}</small>` : ''}</span>
                         <span class="rev-stars">${stars}</span>
@@ -1436,8 +1472,22 @@
                     </div>
                 `;
                 if (rev.hidden) div.classList.add('hidden-rev');
-                container.appendChild(div);
-            });
+                div.id = 'rev_' + rev.id;
+                return div;
+        }
+
+        // coming from a review notification: open that app's reviews and highlight the review
+        let focusDone = false;
+        function focusReviewFromUrl() {
+            if (focusDone) return;
+            const id = new URLSearchParams(location.search).get('review');
+            if (!id) { focusDone = true; return; }
+            const el = document.getElementById('rev_' + id);
+            if (!el) return;
+            focusDone = true;
+            el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+            el.classList.add('rev-focus');
+            setTimeout(() => el.classList.remove('rev-focus'), 3500);
         }
 
         function filterReviews(star) {
@@ -1449,13 +1499,15 @@
         }
 
 
+        function rerenderReviews() { if (currentPage === 'analytics') renderAnaReviews($('anaAppSelect').value); else renderReviews(); }
+
         // hide / unhide a review: hidden reviews are removed from the store page and from the rating
         function toggleHideReview(appId, revId, hide) {
             if (hide && !confirm('Hide this review? It will disappear from the store and will not count in the rating. You can unhide it any time.')) return;
             const ref = db.ref(`reviews/${appId}/${revId}/hidden`);
             (hide ? ref.set(true) : ref.remove()).then(() => {
                 if (allReviews[appId] && allReviews[appId][revId]) { if (hide) allReviews[appId][revId].hidden = true; else delete allReviews[appId][revId].hidden; }
-                renderReviews();
+                rerenderReviews();
                 // keep the app's rating and review count in step with what the store shows
                 let sum = 0, n = 0;
                 Object.values(allReviews[appId] || {}).forEach(r => { if (r && r.text && !r.hidden) { sum += Math.min(5, Math.max(1, Math.round(+r.rating || 5))); n++; } });
@@ -1515,12 +1567,15 @@
             }
             allNotifications.forEach(n => {
                 const div = document.createElement('div');
-                div.className = 'notif-item';
+                const isRev = n.type === 'review' && n.appId;
+                div.className = 'notif-item' + (isRev ? ' notif-link' : '') + (n.read ? '' : ' unread');
+                const stars = isRev && n.rating ? '★'.repeat(Math.round(n.rating)) + '☆'.repeat(5 - Math.round(n.rating)) : '';
+                const sub = isRev ? `<div class="notif-sub">${stars ? `<span class="notif-stars">${stars}</span> ` : ''}${n.snippet ? escHtml(n.snippet) : ''}<span class="notif-go">View review ›</span></div>` : '';
                 div.innerHTML = `
                     <div class="notif-icon">
-                        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg>
+                        ${isRev ? '<svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>' : '<svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg>'}
                     </div>
-                    <div class="notif-text">${escHtml(n.text)}</div>
+                    <div class="notif-main"><div class="notif-text">${escHtml(n.text)}</div>${sub}</div>
                     <div class="notif-time">${new Date(n.timestamp).toLocaleDateString()}</div>
                 `;
                 attachNotifPress(div, n);
@@ -1537,17 +1592,24 @@
 
         // long press (or right click) on a notification -> small menu to delete just that one
         function attachNotifPress(el, n) {
-            let timer = 0, sx = 0, sy = 0;
+            let timer = 0, sx = 0, sy = 0, longAt = 0;
             const cancel = () => { clearTimeout(timer); el.classList.remove('pressing'); };
             el.addEventListener('pointerdown', e => {
                 if (e.pointerType === 'mouse' && e.button !== 0) return;
                 sx = e.clientX; sy = e.clientY;
                 el.classList.add('pressing');
-                timer = setTimeout(() => { el.classList.remove('pressing'); if (navigator.vibrate) try { navigator.vibrate(15); } catch (x) {} openNotifMenu(n); }, 450);
+                timer = setTimeout(() => { longAt = Date.now(); el.classList.remove('pressing'); if (navigator.vibrate) try { navigator.vibrate(15); } catch (x) {} openNotifMenu(n); }, 450);
             });
             el.addEventListener('pointermove', e => { if (Math.abs(e.clientX - sx) > 10 || Math.abs(e.clientY - sy) > 10) cancel(); });
             ['pointerup', 'pointercancel', 'pointerleave'].forEach(t => el.addEventListener(t, cancel));
-            el.addEventListener('contextmenu', e => { e.preventDefault(); cancel(); openNotifMenu(n); });
+            el.addEventListener('contextmenu', e => { e.preventDefault(); cancel(); longAt = Date.now(); openNotifMenu(n); });
+            // tap a review notification -> open that review
+            if (n.type === 'review' && n.appId) {
+                el.addEventListener('click', () => {
+                    if (Date.now() - longAt < 800) return; // this was a long press, not a tap
+                    location.href = '/reviews/?app=' + encodeURIComponent(n.appId) + (n.revId ? '&review=' + encodeURIComponent(n.revId) : '');
+                });
+            }
         }
         function closeNotifMenu() { const m = document.getElementById('notifMenu'); if (m) m.remove(); }
         function openNotifMenu(n) {
