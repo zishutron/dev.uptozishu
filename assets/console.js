@@ -1075,6 +1075,9 @@
                 $('editWhatsNew').value = '';
                 $('editStatus').value = 'live';
             }
+            // number the sections in the order they appear (the release section moves to the top in update mode)
+            const order = (isUpdate ? ['secRelease', 'secBasic'] : ['secBasic', 'secRelease']).concat(['secImages', 'secMore', 'secPerm']).concat(isUpdate ? [] : ['secStatus']);
+            order.forEach((id, i) => { const n = $(id).querySelector('.fsec-n'); if (n) n.textContent = i + 1; });
             $('editSaveBtn').disabled = false;
             modal.classList.add('open');
             const body = modal.querySelector('.sheet-body'); if (body) body.scrollTop = 0;
