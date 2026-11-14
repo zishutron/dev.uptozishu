@@ -106,7 +106,7 @@
             });
         }
         watchUsername('signUser', 'signUserHint', '');
-        watchUsername('compUser', 'compUserHint', '3–20 characters: lowercase letters, numbers, _ or .  You can\'t change it later.');
+        watchUsername('compUser', 'compUserHint', '3–20 characters: lowercase letters, numbers, _ or .');
 
         function switchAuthMode() {
             isLoginMode = !isLoginMode;
