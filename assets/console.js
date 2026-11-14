@@ -366,6 +366,22 @@
             });
         }
 
+        // when an app was created: its timestamp, else the time hidden in its Firebase push id, else its upload date
+        const PUSH_CHARS = '-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz';
+        function appCreated(a) {
+            let t = Number(a.timestamp);
+            if (t > 0) return t < 1e11 ? t * 1000 : t; // seconds -> ms
+            if (typeof a.timestamp === 'string' && !isNaN(Date.parse(a.timestamp))) return Date.parse(a.timestamp);
+            const id = String(a.id || '');
+            if (id.length === 20 && id[0] === '-') {
+                t = 0;
+                for (let i = 0; i < 8; i++) t = t * 64 + PUSH_CHARS.indexOf(id[i]);
+                if (t > 1e12 && t < 4e12) return t;
+            }
+            const d = Date.parse(a.uploadDate || a.updatedDate || '');
+            return isNaN(d) ? 0 : d;
+        }
+
         function loadApps() {
             showLoading(true, 'Loading apps...');
             db.ref('apps').on('value', snapshot => {
@@ -375,7 +391,7 @@
                     allApps = allApps.filter(a => a.developerUid === currentUser.uid);
                 }
                 // newest apps first (push ids are time-ordered, so they also order older apps that have no timestamp)
-                allApps.sort((x, y) => (y.timestamp || 0) - (x.timestamp || 0) || (x.id < y.id ? 1 : -1));
+                allApps.sort((x, y) => appCreated(y) - appCreated(x) || (x.id < y.id ? 1 : -1));
                 syncRatings();
                 $('appCountBadge').textContent = allApps.length;
                 if (currentPage === 'dashboard') updateDashboard();
