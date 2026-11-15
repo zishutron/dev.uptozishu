@@ -1813,62 +1813,141 @@
         // ============================================
         // PROFILE
         // ============================================
+        // ============================================
+        // ORGANIZATION PROFILE (public page on the store: /developer/<username>/)
+        // ============================================
+        const STORE_URL = 'https://uptozishu.zishuai.cloud';
+        const PROF_FIELDS = ['name', 'tagline', 'type', 'about', 'location', 'founded', 'email', 'website', 'github', 'twitter', 'instagram', 'youtube', 'telegram', 'linkedin', 'discord'];
+        const PROF_IDS = { name: 'profName', tagline: 'profTagline', type: 'profType', about: 'profAbout', location: 'profLocation', founded: 'profFounded', email: 'profEmail', website: 'profWebsite', github: 'profGithub', twitter: 'profTwitter', instagram: 'profInstagram', youtube: 'profYoutube', telegram: 'profTelegram', linkedin: 'profLinkedin', discord: 'profDiscord' };
+        const PROF_TYPES = { individual: 'Individual developer', studio: 'Studio / team', company: 'Company', opensource: 'Open source', student: 'Student developer' };
+        let profSaved = {}, profFiles = { logo: null, cover: null }, profUser = '', profCreated = 0, profVerified = false, profBound = false, profLogoUrl = '', profCoverUrl = '';
+
+        function profValues() { const v = {}; PROF_FIELDS.forEach(k => { v[k] = ($(PROF_IDS[k]).value || '').trim(); }); return v; }
+        function profDirty() { const v = profValues(); return PROF_FIELDS.some(k => v[k] !== (profSaved[k] || '')) || !!profFiles.logo || !!profFiles.cover; }
+        function profRefresh() {
+            const v = profValues();
+            $('orgName').textContent = v.name || 'Your organization';
+            $('orgTag').textContent = v.tagline || '';
+            $('orgTypeTxt').textContent = PROF_TYPES[v.type] || '';
+            $('orgTypeTxt').style.display = v.type ? '' : 'none';
+            $('cntTag').textContent = v.tagline.length; $('cntAbout').textContent = v.about.length;
+            $('orgVerified').hidden = !profVerified;
+            $('orgSaveBar').hidden = !profDirty();
+            // strength meter
+            const links = ['website', 'github', 'twitter', 'instagram', 'youtube', 'telegram', 'linkedin', 'discord'].some(k => v[k]);
+            const items = [
+                ['Add a logo', !!(profFiles.logo || profLogoUrl), 15], ['Add a cover image', !!(profFiles.cover || profCoverUrl), 10], ['Add your name', v.name.length >= 2, 15],
+                ['Write a tagline', v.tagline.length >= 10, 10], ['Write an About (50+ characters)', v.about.length >= 50, 20], ['Choose account type', !!v.type, 5],
+                ['Add your location', !!v.location, 5], ['Add a contact email', !!v.email, 10], ['Add a website or social link', links, 10]
+            ];
+            const pct = items.reduce((s, x) => s + (x[1] ? x[2] : 0), 0);
+            $('orgPct').textContent = pct + '%'; $('orgMeter').style.width = pct + '%';
+            $('orgMeter').className = pct >= 80 ? 'good' : pct >= 50 ? 'mid' : '';
+            $('orgTodo').innerHTML = items.filter(x => !x[1]).map(x => '<span>＋ ' + escHtml(x[0]) + '</span>').join('') || '<span class="done">✓ Everything is filled in</span>';
+        }
+        function profBind() {
+            if (profBound) return; profBound = true;
+            PROF_FIELDS.forEach(k => { $(PROF_IDS[k]).addEventListener('input', profRefresh); $(PROF_IDS[k]).addEventListener('change', profRefresh); });
+            const pick = (kind, inputId, imgFn) => $(inputId).addEventListener('change', e => {
+                const f = e.target.files && e.target.files[0]; e.target.value = ''; if (!f) return;
+                if (!/^image\//.test(f.type)) { alert('Please choose an image.'); return; }
+                if (f.size > 8 * 1024 * 1024) { alert('This image is too large. Choose one under 8 MB.'); return; }
+                profFiles[kind] = f; imgFn(URL.createObjectURL(f)); profRefresh();
+            });
+            pick('logo', 'orgLogoFile', u => { $('orgLogo').src = u; });
+            pick('cover', 'orgCoverFile', u => { $('orgCover').style.backgroundImage = `url('${u}')`; $('orgCover').classList.add('has'); });
+            window.addEventListener('beforeunload', e => { if (currentPage === 'profile' && profDirty()) { e.preventDefault(); e.returnValue = ''; } });
+        }
+        function profFill() {
+            PROF_FIELDS.forEach(k => { $(PROF_IDS[k]).value = profSaved[k] || ''; });
+            profFiles = { logo: null, cover: null };
+            $('orgLogo').src = profLogoUrl || 'https://img.icons8.com/clouds/200/user.png';
+            $('orgCover').style.backgroundImage = profCoverUrl ? `url('${profCoverUrl}')` : '';
+            $('orgCover').classList.toggle('has', !!profCoverUrl);
+            profRefresh();
+        }
         function loadProfile() {
             if (!currentUser) return;
-            db.ref(`users/${currentUser.uid}`).once('value').then(us => {
-                const u = us.val() || {};
-                $('profUsername').value = u.username ? '@' + u.username : '';
-                return u;
-            }).catch(() => ({})).then(u => db.ref(`developers/${currentUser.uid}`).once('value').then(snap => {
-                const data = snap.val() || {};
-                $('profName').value = data.displayName || u.name || currentUser.displayName || '';
-                $('profBio').value = data.bio || u.bio || '';
-                $('profWebsite').value = data.website || '';
-                $('profGithub').value = data.github || '';
-                $('profEmail').value = data.supportEmail || currentUser.email || '';
-                $('profCountry').value = data.country || '';
-                if (data.photoURL) {
-                    $('profilePfpPreview').src = data.photoURL;
-                }
-            }));
-        }
-
-        function previewProfilePfp(input) {
-            if (input.files && input.files[0]) {
-                const reader = new FileReader();
-                reader.onload = e => {
-                    $('profilePfpPreview').src = e.target.result;
-                    window._tempPfp = e.target.result;
+            profBind();
+            $('profLoginEmail').value = currentUser.email || '';
+            const uid = currentUser.uid;
+            Promise.all([
+                db.ref('users/' + uid).once('value').catch(() => null), db.ref('developers/' + uid).once('value').catch(() => null),
+                db.ref('devprofiles/' + uid).once('value').catch(() => null), db.ref('apps').once('value').catch(() => null)
+            ]).then(([us, ds, ps, as]) => {
+                const u = (us && us.val()) || {}, d = (ds && ds.val()) || {}, pub = (ps && ps.val()) || {};
+                profUser = u.username || window._devUsername || pub.username || '';
+                $('profUsername').value = profUser ? '@' + profUser : '';
+                $('orgUser').textContent = profUser ? '@' + profUser : '';
+                profVerified = pub.verified === true; profCreated = +pub.createdAt || 0;
+                profSaved = {
+                    name: pub.name || d.displayName || u.name || currentUser.displayName || '', tagline: pub.tagline || '', type: pub.type || '',
+                    about: pub.about || d.bio || u.bio || '', location: pub.location || d.country || '', founded: pub.founded || '',
+                    email: pub.email || d.supportEmail || '', website: pub.website || d.website || '', github: pub.github || d.github || '',
+                    twitter: pub.twitter || '', instagram: pub.instagram || '', youtube: pub.youtube || '', telegram: pub.telegram || '', linkedin: pub.linkedin || '', discord: pub.discord || ''
                 };
-                reader.readAsDataURL(input.files[0]);
-            }
+                profLogoUrl = /^https?:\/\//i.test(pub.logo || '') ? pub.logo : (/^https?:\/\//i.test(d.photoURL || '') ? d.photoURL : '');
+                profCoverUrl = /^https?:\/\//i.test(pub.cover || '') ? pub.cover : '';
+                profFill();
+                // public link
+                const link = profUser ? `${STORE_URL}/developer/${profUser}/` : '';
+                $('orgLink').textContent = link ? link.replace('https://', '') : 'Set a username first';
+                $('orgView').href = link || '#'; $('orgView').style.display = link ? '' : 'none';
+                window._profLink = link;
+                // stats from this developer's apps
+                const all = (as && as.val()) || {}, mine = Object.keys(all).map(id => ({ id, ...all[id] })).filter(a => a.developerUid === uid);
+                const live = mine.filter(a => a.status === 'live' || a.status === 'approved');
+                const dl = mine.reduce((s, a) => s + (+a.downloadCount || 0), 0), rc = mine.reduce((s, a) => s + (+a.reviewCount || 0), 0);
+                const rate = rc ? mine.reduce((s, a) => s + (+a.rating || 0) * (+a.reviewCount || 0), 0) / rc : 0;
+                const firstApp = mine.reduce((m, a) => { const t = appCreated(a); return t && t < m ? t : m; }, Infinity);
+                const since = +u.createdAt || profCreated || (isFinite(firstApp) ? firstApp : 0);
+                $('stApps').textContent = live.length; $('stDl').textContent = dl >= 1000 ? (dl / 1000).toFixed(dl >= 10000 ? 0 : 1).replace(/\.0$/, '') + 'K' : dl;
+                $('stRate').textContent = rate ? rate.toFixed(1) + ' ★' : '—'; $('stSince').textContent = since ? new Date(since).getFullYear() : '—';
+                window._profApps = mine;
+            });
         }
+        function copyProfileLink() {
+            const l = window._profLink; if (!l) { alert('Set a username first.'); return; }
+            (navigator.clipboard ? navigator.clipboard.writeText(l) : Promise.reject()).then(() => alert('Link copied.')).catch(() => prompt('Copy this link', l));
+        }
+        function discardProfile() { if (profDirty() && !confirm('Discard your changes?')) return; profFill(); }
+        function profUrl(v) { v = String(v || '').trim(); if (!v) return ''; return /^https?:\/\//i.test(v) ? v : 'https://' + v.replace(/^\/+/, ''); }
 
         function saveProfile() {
             if (!currentUser) return;
-            const data = {
-                displayName: $('profName').value,
-                bio: $('profBio').value,
-                website: $('profWebsite').value,
-                github: $('profGithub').value,
-                supportEmail: $('profEmail').value,
-                country: $('profCountry').value,
-                updatedAt: Date.now()
-            };
-            if (window._tempPfp) {
-                data.photoURL = window._tempPfp;
-                window._tempPfp = null;
-            }
-            db.ref(`developers/${currentUser.uid}`).update(data).then(() => {
-                if (data.displayName) {
-                    currentUser.updateProfile({ displayName: data.displayName });
-                }
-                // keep the public store profile in sync (username itself never changes)
-                if (window._devUsername) db.ref(`users/${currentUser.uid}`).update({ name: String(data.displayName || '').slice(0, 40), bio: String(data.bio || '').slice(0, 140) }).catch(() => {});
-                addNotification('Profile updated successfully!');
-                alert('Profile saved!');
-                loadProfile();
-            });
+            const v = profValues(), uid = currentUser.uid, err = m => { alert(m); };
+            if (!profUser) return err('Your account has no username yet. Please sign out and sign in again to finish your profile.');
+            if (v.name.length < 2) return err('Please enter your organization or developer name (at least 2 characters).');
+            if (v.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v.email)) return err('Enter a valid contact email, or leave it empty.');
+            if (v.founded && !/^(19|20)\d{2}$/.test(v.founded)) return err('Year started must be a 4-digit year, for example 2024.');
+            v.website = profUrl(v.website); v.discord = profUrl(v.discord);
+            if (v.website && !/^https?:\/\/\S+\.\S+/.test(v.website)) return err('Enter a valid website address.');
+            const btn = $('orgSaveBtn'); btn.disabled = true; btn.textContent = 'Saving…';
+            const up1 = f => f ? uploadToImgBB(f) : Promise.resolve(null);
+            Promise.all([up1(profFiles.logo), up1(profFiles.cover)]).then(([logo, cover]) => {
+                if ((logo && !/^https?:\/\//i.test(logo)) || (cover && !/^https?:\/\//i.test(cover))) throw new Error('Image upload failed. Check your internet and try again.');
+                const now = Date.now(), up = {}, pub = `devprofiles/${uid}/`, nv = x => (x === '' ? null : x);
+                PROF_FIELDS.forEach(k => { up[pub + k] = nv(k === 'name' ? v.name.slice(0, 60) : v[k]); });
+                up[pub + 'tagline'] = nv(v.tagline.slice(0, 90)); up[pub + 'about'] = nv(v.about.slice(0, 1500));
+                up[pub + 'username'] = profUser; up[pub + 'updatedAt'] = now; up[pub + 'createdAt'] = profCreated || now;
+                const newLogo = logo || profLogoUrl, newCover = cover || profCoverUrl;
+                up[pub + 'logo'] = nv(newLogo); up[pub + 'cover'] = nv(newCover);
+                // private copy + the account used on the store
+                up[`developers/${uid}/displayName`] = v.name; up[`developers/${uid}/bio`] = v.about.slice(0, 1500); up[`developers/${uid}/website`] = v.website; up[`developers/${uid}/github`] = v.github;
+                up[`developers/${uid}/supportEmail`] = v.email; up[`developers/${uid}/country`] = v.location; up[`developers/${uid}/updatedAt`] = now;
+                if (newLogo) up[`developers/${uid}/photoURL`] = newLogo;
+                up[`users/${uid}/name`] = v.name.slice(0, 40); up[`users/${uid}/bio`] = (v.tagline || v.about).slice(0, 140);
+                // the developer name printed on each of the apps follows the profile name
+                (window._profApps || []).forEach(a => { if (a.developerName !== v.name) up[`apps/${a.id}/developerName`] = v.name; });
+                return db.ref().update(up).then(() => ({ newLogo, newCover }));
+            }).then(({ newLogo, newCover }) => {
+                profSaved = { ...v }; profLogoUrl = newLogo || ''; profCoverUrl = newCover || ''; profFiles = { logo: null, cover: null }; profCreated = profCreated || Date.now();
+                (window._profApps || []).forEach(a => { a.developerName = v.name; });
+                try { currentUser.updateProfile({ displayName: v.name }); } catch (e) {}
+                addNotification('Profile updated successfully!'); profFill();
+                btn.disabled = false; btn.textContent = 'Save changes';
+                alert('Profile saved. It will appear on the store after the next store update.');
+            }).catch(x => { btn.disabled = false; btn.textContent = 'Save changes'; alert((x && x.message ? x.message : 'Could not save.') + (/permission/i.test((x && x.message) || '') ? '\nPublish the latest Firebase rules (devprofiles).' : '')); });
         }
 
         // ============================================
