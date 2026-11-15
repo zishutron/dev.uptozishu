@@ -825,6 +825,7 @@
         }
         const shotsUp = createShotManager('screensPreview', 'upScreenshots');
         const shotsEdit = createShotManager('editScreensPreview', 'editScreenshots');
+        const shotsClaim = createShotManager('claimScreensPreview', 'claimScreenshots');
 
         function uploadToImgBB(file) {
             return new Promise((resolve, reject) => {
@@ -1678,7 +1679,7 @@
         // CLAIM AN APP (developer) + CLAIM REQUESTS (store admin)
         // The admin is whoever has admins/<uid> = true in Firebase (set by hand in the Firebase console).
         // ============================================
-        let storeApps = [], myClaims = {}, claimApp = null;
+        let storeApps = [], myClaims = {}, claimApp = null, claimLimit = 20;
         const claimKey = s => String(s || '').replace(/[^A-Za-z0-9_-]/g, '_');
         const claimWhen = t => t ? new Date(+t).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
         const hostOf = u => { try { return new URL(/^https?:/i.test(u) ? u : 'https://' + u).hostname.replace(/^www\./, '').toLowerCase(); } catch (e) { return ''; } };
@@ -1687,26 +1688,26 @@
         // ---------- developer side ----------
         function initClaimPage() {
             db.ref('apps').once('value').then(snap => {
-                storeApps = Object.entries(snap.val() || {}).map(([id, a]) => ({ id, ...a })).filter(a => a.developerUid !== currentUser.uid);
+                storeApps = Object.entries(snap.val() || {}).map(([id, a]) => ({ id, ...a })).filter(a => a.developerUid !== currentUser.uid && a.status !== 'draft').sort((a, b) => appCreated(b) - appCreated(a));
                 const pre = new URLSearchParams(location.search).get('app');
                 if (pre) { const a = storeApps.find(x => x.id === pre); if (a) { $('claimSearch').value = a.name || ''; } }
                 renderClaimResults();
                 if (pre && storeApps.some(x => x.id === pre) && !myClaims[pre]) openClaimModal(pre);
             });
-            $('claimSearch').addEventListener('input', renderClaimResults);
+            $('claimSearch').addEventListener('input', () => { claimLimit = 20; renderClaimResults(); });
             db.ref('claims/' + currentUser.uid).on('value', snap => { myClaims = snap.val() || {}; renderMyClaims(); renderClaimResults(); });
         }
         function claimPill(st) { return st === 'approved' ? '<span class="pill live">Approved</span>' : st === 'rejected' ? '<span class="pill rej">Rejected</span>' : '<span class="pill draft">Pending</span>'; }
         function renderClaimResults() {
             const box = $('claimResults'), q = $('claimSearch').value.trim().toLowerCase();
-            if (q.length < 2) { box.innerHTML = '<div class="chart-note">Type the name or package of your app to find it.</div>'; return; }
-            const list = storeApps.filter(a => [a.name, a.package, a.developerName].join(' ').toLowerCase().includes(q)).slice(0, 30);
+            const all = q.length < 2 ? storeApps : storeApps.filter(a => [a.name, a.package, a.developerName].join(' ').toLowerCase().includes(q));
+            const list = all.slice(0, claimLimit);
             if (!list.length) { box.innerHTML = '<div class="chart-note">No app found. Check the spelling, or upload it as a new app.</div>'; return; }
             box.innerHTML = list.map(a => {
                 const c = myClaims[a.id];
-                const act = c && c.status === 'pending' ? claimPill('pending') : c && c.status === 'approved' ? claimPill('approved') : `<button type="button" class="btn-primary claim-go" onclick="openClaimModal('${escHtml(a.id)}')">${c && c.status === 'rejected' ? 'Claim again' : 'Claim'}</button>`;
+                const act = a.claimedAt && !(c && c.status === 'pending') ? `<button type="button" class="btn-ghost claim-go" onclick="openClaimModal('${escHtml(a.id)}')">Claimed</button>` : c && c.status === 'pending' ? claimPill('pending') : c && c.status === 'approved' ? claimPill('approved') : `<button type="button" class="btn-primary claim-go" onclick="openClaimModal('${escHtml(a.id)}')">${c && c.status === 'rejected' ? 'Claim again' : 'Claim'}</button>`;
                 return `<div class="claim-app"><img src="${escHtml(a.icon || 'https://img.icons8.com/color/144/android-os.png')}" alt=""><div class="claim-app-info"><b>${escHtml(a.name || 'App')}</b><span>${escHtml(a.package || '')}</span><span>Listed by ${escHtml(a.developerName || 'unknown')}</span></div>${act}</div>`;
-            }).join('');
+            }).join('') + (all.length > list.length ? `<div style="text-align:center;margin-top:6px"><button type="button" class="btn-ghost" onclick="claimLimit += 20; renderClaimResults()">Show more (${all.length - list.length})</button></div>` : '');
         }
         function renderMyClaims() {
             const box = $('myClaims'), list = Object.keys(myClaims).map(k => ({ ...myClaims[k], key: k })).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
@@ -1715,15 +1716,23 @@
         }
         function openClaimModal(appId) {
             const a = storeApps.find(x => x.id === appId); if (!a) return;
+            if (a.claimedAt) { showClaimed(a); return; }
             claimApp = a;
             $('claimIcon').src = a.icon || 'https://img.icons8.com/color/144/android-os.png';
             $('claimTitle').textContent = 'Claim ' + (a.name || 'app');
             $('claimSub').textContent = a.package || '';
             $('claimEmail').value = (currentUser.email || '');
             $('claimProof').value = ''; $('claimMessage').value = ''; $('claimConfirm').checked = false; $('claimError').textContent = '';
-            $('claimSendBtn').disabled = false; $('claimSendBtn').textContent = 'Send claim';
+            shotsClaim.clear(); $('claimSendBtn').disabled = false; $('claimSendBtn').textContent = 'Send claim';
             $('claimModal').classList.add('open');
         }
+        function showClaimed(a) {
+            $('claimedIcon').src = a.icon || 'https://img.icons8.com/color/144/android-os.png';
+            $('claimedName').textContent = a.name || 'This app';
+            $('claimedBy').textContent = a.developerName || 'another developer';
+            $('claimedModal').classList.add('open');
+        }
+        function closeClaimedModal() { $('claimedModal').classList.remove('open'); }
         function closeClaimModal() { $('claimModal').classList.remove('open'); }
         function submitClaim(e) {
             e.preventDefault();
@@ -1733,14 +1742,18 @@
             if (!/^https?:\/\/\S+\.\S+/i.test(proof)) { err.textContent = 'Enter the proof link, starting with https://'; return; }
             if (msg.length < 15) { err.textContent = 'Please write a short message (at least 15 characters).'; return; }
             if (!$('claimConfirm').checked) { err.textContent = 'Please tick the confirmation box.'; return; }
-            const btn = $('claimSendBtn'); btn.disabled = true; btn.textContent = 'Sending…'; err.textContent = '';
-            db.ref('users/' + currentUser.uid).once('value').catch(() => null).then(us => {
+            const btn = $('claimSendBtn'); btn.disabled = true; btn.textContent = shotsClaim.items.length ? 'Uploading screenshots…' : 'Sending…'; err.textContent = '';
+            shotsClaim.resolve().then(urls => {
+                if (urls.some(u => !/^https?:\/\//i.test(u))) throw new Error('Screenshot upload failed. Check your internet and try again.');
+                btn.textContent = 'Sending…';
+                return db.ref('users/' + currentUser.uid).once('value').catch(() => null).then(us => ({ us, urls }));
+            }).then(({ us, urls }) => {
                 const u = (us && us.val()) || {};
                 return db.ref('claims/' + currentUser.uid + '/' + a.id).set({
                     appId: a.id, appName: String(a.name || '').slice(0, 100), package: String(a.package || '').slice(0, 150), icon: String(a.icon || '').slice(0, 500),
                     currentOwner: String(a.developerUid || ''), currentOwnerName: String(a.developerName || '').slice(0, 80),
                     claimantUid: currentUser.uid, claimantName: String(u.name || currentUser.displayName || 'Developer').slice(0, 60), claimantUsername: String(u.username || ''),
-                    claimantEmail: String(currentUser.email || '').slice(0, 120), contactEmail: email.slice(0, 120), role: $('claimRole').value, proofUrl: proof.slice(0, 400), message: msg,
+                    claimantEmail: String(currentUser.email || '').slice(0, 120), contactEmail: email.slice(0, 120), role: $('claimRole').value, proofUrl: proof.slice(0, 400), message: msg, screenshots: urls.join(','),
                     status: 'pending', timestamp: Date.now()
                 });
             }).then(() => { closeClaimModal(); alert('Claim sent. The store admin will check it, and you will get a notification.'); })
