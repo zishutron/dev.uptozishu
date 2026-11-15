@@ -328,19 +328,6 @@
         }
 
         // ============================================
-        // LOGOUT
-        // ============================================
-        function logoutUser() {
-            if (confirm('Are you sure you want to logout?')) {
-                auth.signOut().then(() => {
-                    localStorage.removeItem('stardust_uid');
-                    leaving = true;
-                    location.replace('/auth/');
-                });
-            }
-        }
-
-        // ============================================
         // NAVIGATION
         // ============================================
         const PAGE_URL = { dashboard: '/', myapps: '/apps/', upload: '/upload/', analytics: '/analytics/', reviews: '/reviews/', notifications: '/notifications/', profile: '/profile/', settings: '/settings/' };
@@ -359,6 +346,7 @@
             if (currentPage === 'profile') loadProfile();
             if (currentPage === 'myapps') initAppSearch();
             if (currentPage === 'claim') initClaimPage();
+            if (currentPage === 'settings') initSettings();
         }
 
         // ============================================
@@ -1579,6 +1567,8 @@
             db.ref(`notifications/${currentUser.uid}`).on('value', snapshot => {
                 const data = snapshot.val();
                 allNotifications = data ? Object.keys(data).map(k => ({ id: k, ...data[k] })).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0)) : [];
+                const np = notifPrefs();
+                allNotifications = allNotifications.filter(n => !(n.type && np[n.type] === false));
                 setBadge($('notifBadge'), allNotifications.filter(n => !n.read).length);
                 if (currentPage === 'notifications') renderNotifications();
             });
@@ -1782,33 +1772,6 @@
             localStorage.setItem('stardust_activity_log', JSON.stringify(activityLog));
         }
 
-        function viewActivityLog() {
-            if (activityLog.length === 0) {
-                alert('No activity logged yet.');
-                return;
-            }
-            let msg = 'Recent Activity:\n\n';
-            activityLog.slice(0, 20).forEach(log => {
-                const date = new Date(log.timestamp).toLocaleString();
-                msg += `• ${date}: ${log.action}\n`;
-            });
-            alert(msg);
-        }
-
-        function viewDrafts() {
-            const draftKeys = Object.keys(drafts);
-            if (draftKeys.length === 0) {
-                alert('No drafts saved.');
-                return;
-            }
-            let msg = 'Saved Drafts:\n\n';
-            draftKeys.forEach(key => {
-                const d = drafts[key];
-                msg += `• ${d.name || 'Untitled'} (Step ${d.step || 1})\n`;
-            });
-            msg += '\nClick "Upload App" to continue your draft.';
-            alert(msg);
-        }
 
         // ============================================
         // PROFILE
@@ -1951,69 +1914,235 @@
         }
 
         // ============================================
-        // SETTINGS
+        // SETTINGS (professional dialogs; English only)
         // ============================================
-        function changePassword() {
-            const currentPw = prompt('Enter current password:');
-            if (!currentPw) return;
-            const newPw = prompt('Enter new password (min 6 chars):');
-            if (!newPw || newPw.length < 6) { alert('Password must be at least 6 characters.'); return; }
-            const confirmPw = prompt('Confirm new password:');
-            if (newPw !== confirmPw) { alert('Passwords do not match.'); return; }
-
-            const user = auth.currentUser;
-            const credential = firebase.auth.EmailAuthProvider.credential(user.email, currentPw);
-            user.reauthenticateWithCredential(credential).then(() => {
-                user.updatePassword(newPw).then(() => {
-                    addNotification('Password changed successfully!');
-                    alert('Password changed!');
-                }).catch(err => alert('Error: ' + err.message));
-            }).catch(err => alert('Current password is incorrect.'));
+        const NOTIF_PREF_KEY = 'zt_notif_prefs';
+        const SUPPORT_EMAIL = 'support.stardustofficial@gmail.com';
+        function notifPrefs() { try { return Object.assign({ review: true, claim: true, admin: true }, JSON.parse(localStorage.getItem(NOTIF_PREF_KEY) || '{}')); } catch (e) { return { review: true, claim: true, admin: true }; } }
+        const NF_MAP = { nfReview: 'review', nfClaim: 'claim', nfAdmin: 'admin' };
+        function setNotifPref(id, on) {
+            const p = notifPrefs(); p[NF_MAP[id]] = !!on;
+            try { localStorage.setItem(NOTIF_PREF_KEY, JSON.stringify(p)); } catch (e) {}
+            stToast(on ? 'Notifications turned on' : 'Notifications turned off');
         }
-
-        function changeEmail() {
-            const newEmail = prompt('Enter new email address:');
-            if (!newEmail || !newEmail.includes('@')) { alert('Invalid email address.'); return; }
-            const user = auth.currentUser;
-            user.updateEmail(newEmail).then(() => {
-                db.ref(`developers/${user.uid}/email`).set(newEmail);
-                addNotification('Email updated successfully!');
-                alert('Email updated!');
-                $('userDisplayEmail').textContent = newEmail;
-            }).catch(err => alert('Error: ' + err.message));
+        function stToast(msg) {
+            const t = $('stToast'); if (!t) return;
+            t.textContent = msg; t.classList.add('show');
+            clearTimeout(stToast._t); stToast._t = setTimeout(() => t.classList.remove('show'), 2400);
         }
+        function openStModal(title, sub, bodyHtml, buttons) {
+            $('stModalTitle').textContent = title;
+            $('stModalSub').textContent = sub || '';
+            $('stModalSub').style.display = sub ? '' : 'none';
+            $('stModalBody').innerHTML = bodyHtml;
+            const foot = $('stModalFoot'); foot.innerHTML = '';
+            (buttons || []).forEach(b => {
+                const el = document.createElement('button');
+                el.type = 'button'; el.id = b.id || '';
+                el.className = b.kind === 'primary' ? 'btn-primary' : b.kind === 'danger' ? 'btn-primary st-btn-danger' : 'btn-ghost';
+                el.textContent = b.label; el.onclick = b.onclick;
+                foot.appendChild(el);
+            });
+            foot.style.display = buttons && buttons.length ? '' : 'none';
+            $('stModal').classList.add('open');
+            const first = $('stModalBody').querySelector('input'); if (first) setTimeout(() => first.focus(), 60);
+        }
+        function closeStModal() { $('stModal').classList.remove('open'); }
+        function stErr(msg) { const e = $('stErr'); if (e) { e.textContent = msg || ''; e.style.display = msg ? '' : 'none'; } }
+        function stBusy(id, on, label) { const b = $(id); if (!b) return; if (on) { b.dataset.l = b.textContent; b.textContent = label; b.disabled = true; } else { b.textContent = b.dataset.l || b.textContent; b.disabled = false; } }
+        function authMsg(e) {
+            const c = (e && e.code) || '';
+            if (c === 'auth/wrong-password' || c === 'auth/invalid-credential' || c === 'auth/invalid-login-credentials') return 'Current password is incorrect.';
+            if (c === 'auth/weak-password') return 'New password is too weak (min 6 characters).';
+            if (c === 'auth/email-already-in-use') return 'That email is already used by another account.';
+            if (c === 'auth/invalid-email') return 'Enter a valid email address.';
+            if (c === 'auth/too-many-requests') return 'Too many attempts. Try again in a few minutes.';
+            if (c === 'auth/requires-recent-login') return 'Please sign out, sign in again and retry.';
+            if (c === 'auth/popup-closed-by-user' || c === 'auth/cancelled-popup-request') return 'Google confirmation was cancelled.';
+            return (e && e.message) || 'Something went wrong. Try again.';
+        }
+        function isPasswordUser() { const u = auth.currentUser; return !!(u && u.providerData && u.providerData.some(p => p.providerId === 'password')); }
+        function reauth(pw) {
+            const u = auth.currentUser;
+            if (isPasswordUser()) return u.reauthenticateWithCredential(firebase.auth.EmailAuthProvider.credential(u.email, pw));
+            return u.reauthenticateWithPopup(new firebase.auth.GoogleAuthProvider());
+        }
+        function pwField(id, label, ph, ac) { return `<div class="form-group"><label for="${id}">${label}</label><input type="password" id="${id}" placeholder="${ph || ''}" autocomplete="${ac || 'off'}"></div>`; }
 
-        function deleteAccount() {
-            if (!confirm('Are you sure you want to delete your account? This cannot be undone!')) return;
-            if (!confirm('All your apps and data will be permanently deleted. This is also your UptoZishu store account: your store profile and username will be removed too. Continue?')) return;
-
-            const user = auth.currentUser;
-            db.ref(`developers/${user.uid}`).remove();
-            db.ref(`notifications/${user.uid}`).remove();
-            if (window._devUsername) db.ref(`usernames/${window._devUsername}`).remove().catch(() => {});
-            db.ref(`users/${user.uid}`).remove().catch(() => {});
-            allApps.forEach(app => {
-                if (app.developerUid === user.uid) {
-                    db.ref(`apps/${app.id}`).remove();
+        // ---- page init ----
+        function initSettings() {
+            const u = auth.currentUser; if (!u) return;
+            const name = u.displayName || (u.email || '').split('@')[0] || 'Developer';
+            $('stName').textContent = name; $('stEmail').textContent = u.email || '';
+            $('stAvatar').textContent = name.charAt(0).toUpperCase();
+            if ($('stYear')) $('stYear').textContent = new Date().getFullYear();
+            const google = !isPasswordUser();
+            ['stRowPw', 'stRowEmail'].forEach(i => { const r = $(i); if (r) r.style.display = google ? 'none' : ''; });
+            $('stGoogleNote').style.display = google ? '' : 'none';
+            const chips = [];
+            chips.push(`<span class="st-chip">${google ? 'Google account' : 'Email and password'}</span>`);
+            chips.push(u.emailVerified ? '<span class="st-chip ok">Email verified</span>' : '<span class="st-chip warn">Email not verified</span>');
+            $('stChips').innerHTML = chips.join('');
+            db.ref('users/' + u.uid).once('value').then(s => {
+                const p = s.val() || {};
+                if (p.username) {
+                    $('stChips').insertAdjacentHTML('afterbegin', `<span class="st-chip brand">@${escHtml(p.username)}</span>`);
+                    const a = $('stPublic'); a.href = STORE_URL + '/developer/' + encodeURIComponent(p.username) + '/'; a.style.display = '';
                 }
-            });
-            user.delete().then(() => {
-                localStorage.removeItem('stardust_uid');
-                alert('Account deleted successfully.');
-                leaving = true;
-                location.replace('/auth/');
-            }).catch(err => {
-                alert('Error deleting account: ' + err.message);
-            });
+            }).catch(() => {});
+            db.ref('devprofiles/' + u.uid).once('value').then(s => {
+                const p = s.val() || {};
+                if (p.name) $('stName').textContent = p.name;
+                if (p.verified) $('stChips').insertAdjacentHTML('beforeend', '<span class="st-chip ok">Verified developer</span>');
+                if (p.logo && /^https:/.test(p.logo)) { const av = $('stAvatar'); av.textContent = ''; av.style.backgroundImage = `url("${p.logo.replace(/"/g, '')}")`; av.classList.add('img'); }
+            }).catch(() => {});
+            const p = notifPrefs();
+            Object.keys(NF_MAP).forEach(id => { const el = $(id); if (el) el.checked = p[NF_MAP[id]] !== false; });
+            refreshThemeSeg(); refreshSettingCounts();
+        }
+        function refreshSettingCounts() {
+            const d = Object.keys(drafts || {}).length, a = (activityLog || []).length;
+            if ($('stRowDraftsSub')) $('stRowDraftsSub').textContent = d ? d + ' unfinished draft' + (d > 1 ? 's' : '') + ' · tap to manage' : 'No drafts saved';
+            if ($('stRowActSub')) $('stRowActSub').textContent = a ? a + ' recent action' + (a > 1 ? 's' : '') : 'No activity yet';
         }
 
-        function changeLanguage() {
-            const lang = prompt('Select language (en, hi, es, fr, de):', 'en');
-            if (lang) {
-                localStorage.setItem('stardust_lang', lang);
-                addNotification(`Language changed to ${lang}`);
-                alert(`Language set to ${lang}`);
-            }
+        // ---- theme ----
+        function themeMode() { let s = null; try { s = localStorage.getItem(THEME_KEY); } catch (e) {} return s === 'dark' || s === 'light' ? s : 'system'; }
+        function refreshThemeSeg() { const m = themeMode(); document.querySelectorAll('#stTheme button').forEach(b => b.classList.toggle('on', b.dataset.t === m)); }
+        function setThemeMode(m) {
+            if (m === 'system') useSystemTheme(); else applyTheme(m === 'dark', true);
+            refreshThemeSeg();
+        }
+
+        // ---- password ----
+        function openPasswordModal() {
+            openStModal('Change password', 'Confirm your current password first.',
+                pwField('pwOld', 'Current password', '', 'current-password') + pwField('pwNew', 'New password', 'At least 6 characters', 'new-password') + pwField('pwNew2', 'Confirm new password', '', 'new-password') + '<div class="error-msg" id="stErr" style="display:none"></div>',
+                [{ label: 'Cancel', onclick: closeStModal }, { id: 'pwGo', label: 'Update password', kind: 'primary', onclick: submitPassword }]);
+        }
+        function submitPassword() {
+            const o = $('pwOld').value, n = $('pwNew').value, c = $('pwNew2').value;
+            if (!o) return stErr('Enter your current password.');
+            if (n.length < 6) return stErr('New password must be at least 6 characters.');
+            if (n !== c) return stErr('New passwords do not match.');
+            if (n === o) return stErr('New password must be different from the current one.');
+            stErr(''); stBusy('pwGo', true, 'Updating...');
+            reauth(o).then(() => auth.currentUser.updatePassword(n)).then(() => {
+                addActivityLog('Changed password'); closeStModal(); stToast('Password updated'); refreshSettingCounts();
+            }).catch(e => { stBusy('pwGo', false); stErr(authMsg(e)); });
+        }
+
+        // ---- email ----
+        function openEmailModal() {
+            openStModal('Change email', 'Current: ' + (auth.currentUser.email || ''),
+                `<div class="form-group"><label for="emNew">New email address</label><input type="email" id="emNew" placeholder="you@example.com" autocomplete="email"></div>` + pwField('emPw', 'Current password', '', 'current-password') + '<div class="error-msg" id="stErr" style="display:none"></div>',
+                [{ label: 'Cancel', onclick: closeStModal }, { id: 'emGo', label: 'Update email', kind: 'primary', onclick: submitEmail }]);
+        }
+        function submitEmail() {
+            const em = $('emNew').value.trim(), pw = $('emPw').value;
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) return stErr('Enter a valid email address.');
+            if (em.toLowerCase() === (auth.currentUser.email || '').toLowerCase()) return stErr('That is already your email.');
+            if (!pw) return stErr('Enter your current password.');
+            stErr(''); stBusy('emGo', true, 'Updating...');
+            reauth(pw).then(() => auth.currentUser.updateEmail(em)).then(() => {
+                db.ref('developers/' + auth.currentUser.uid + '/email').set(em).catch(() => {});
+                addActivityLog('Changed email'); $('userDisplayEmail').textContent = em; $('stEmail').textContent = em;
+                closeStModal(); stToast('Email updated');
+            }).catch(e => { stBusy('emGo', false); stErr(authMsg(e)); });
+        }
+
+        // ---- sign-in info ----
+        function openSigninInfo() {
+            const u = auth.currentUser, m = u.metadata || {};
+            const f = t => t ? new Date(t).toLocaleString() : '—';
+            const rows = [['Email', u.email || '—'], ['Sign-in method', isPasswordUser() ? 'Email and password' : 'Google'], ['Email status', u.emailVerified ? 'Verified' : 'Not verified'], ['Account created', f(m.creationTime)], ['Last sign-in', f(m.lastSignInTime)]];
+            let html = '<div class="st-kv">' + rows.map(r => `<div><span>${r[0]}</span><b>${escHtml(r[1])}</b></div>`).join('') + '</div>';
+            const btns = [{ label: 'Close', onclick: closeStModal }];
+            if (!u.emailVerified && isPasswordUser()) btns.push({ id: 'vfGo', label: 'Send verification email', kind: 'primary', onclick: () => { stBusy('vfGo', true, 'Sending...'); u.sendEmailVerification().then(() => { closeStModal(); stToast('Verification email sent'); }).catch(e => { stBusy('vfGo', false); stToast(authMsg(e)); }); } });
+            openStModal('Sign-in details', '', html, btns);
+        }
+
+        // ---- drafts ----
+        function openDrafts() {
+            const keys = Object.keys(drafts || {});
+            if (!keys.length) { openStModal('Saved drafts', '', '<div class="st-empty">No drafts saved.<br><small>Drafts are created while you upload an app.</small></div>', [{ label: 'Close', onclick: closeStModal }, { label: 'Upload an app', kind: 'primary', onclick: () => { location.href = '/upload/'; } }]); return; }
+            const html = '<div class="st-list">' + keys.map(k => { const d = drafts[k] || {}; return `<div class="st-li"><span class="st-ico">${'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>'}</span><span class="st-txt"><b>${escHtml(d.name || 'Untitled app')}</b><small>Step ${escHtml(String(d.step || 1))}</small></span><button type="button" class="st-mini" onclick="removeDraft('${escHtml(k).replace(/'/g, '')}')">Delete</button></div>`; }).join('') + '</div>';
+            openStModal('Saved drafts', keys.length + ' draft' + (keys.length > 1 ? 's' : ''), html, [{ label: 'Close', onclick: closeStModal }, { label: 'Continue upload', kind: 'primary', onclick: () => { location.href = '/upload/'; } }]);
+        }
+        function removeDraft(k) {
+            const real = Object.keys(drafts).find(x => x.replace(/'/g, '') === k); if (!real) return;
+            delete drafts[real]; try { localStorage.setItem('stardust_drafts', JSON.stringify(drafts)); } catch (e) {}
+            refreshSettingCounts(); openDrafts();
+        }
+
+        // ---- activity ----
+        function openActivity() {
+            if (!activityLog.length) { openStModal('Activity log', '', '<div class="st-empty">No activity yet.<br><small>Your recent actions will appear here.</small></div>', [{ label: 'Close', onclick: closeStModal }]); return; }
+            const html = '<div class="st-list">' + activityLog.slice(0, 50).map(l => `<div class="st-li"><span class="st-dot"></span><span class="st-txt"><b>${escHtml(l.action)}</b><small>${new Date(l.timestamp).toLocaleString()}</small></span></div>`).join('') + '</div>';
+            openStModal('Activity log', 'Last ' + Math.min(50, activityLog.length) + ' actions on this device', html, [{ label: 'Close', onclick: closeStModal }, { label: 'Clear log', kind: 'danger', onclick: () => { activityLog = []; try { localStorage.removeItem('stardust_activity_log'); } catch (e) {} refreshSettingCounts(); closeStModal(); stToast('Activity log cleared'); } }]);
+        }
+
+        // ---- data & privacy ----
+        function exportMyData() {
+            const u = auth.currentUser; if (!u) return;
+            stToast('Preparing your data...');
+            Promise.all([db.ref('users/' + u.uid).once('value'), db.ref('developers/' + u.uid).once('value'), db.ref('devprofiles/' + u.uid).once('value')].map(p => p.catch(() => null))).then(r => {
+                const out = {
+                    exportedAt: new Date().toISOString(),
+                    account: { uid: u.uid, email: u.email, emailVerified: u.emailVerified, createdAt: (u.metadata || {}).creationTime || null },
+                    user: r[0] ? r[0].val() : null, developer: r[1] ? r[1].val() : null, publicProfile: r[2] ? r[2].val() : null,
+                    apps: (allApps || []).filter(a => a.developerUid === u.uid),
+                    notifications: allNotifications || []
+                };
+                const blob = new Blob([JSON.stringify(out, null, 2)], { type: 'application/json' });
+                const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'uptozishu-my-data.json';
+                document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+                addActivityLog('Exported account data'); refreshSettingCounts(); stToast('Data downloaded');
+            });
+        }
+        function openClearLocal() {
+            openStModal('Clear local data', '', '<p class="st-p">This removes saved drafts, your activity log and notification and theme preferences from <b>this device only</b>. Your account and apps are not affected.</p>',
+                [{ label: 'Cancel', onclick: closeStModal }, { label: 'Clear data', kind: 'danger', onclick: () => {
+                    ['stardust_drafts', 'stardust_activity_log', NOTIF_PREF_KEY, THEME_KEY].forEach(k => { try { localStorage.removeItem(k); } catch (e) {} });
+                    drafts = {}; activityLog = []; useSystemTheme(); initSettings(); closeStModal(); stToast('Local data cleared');
+                } }]);
+        }
+
+        // ---- sign out ----
+        function openSignOut() {
+            openStModal('Sign out?', '', '<p class="st-p">You will need to sign in again to manage your apps on this device.</p>',
+                [{ label: 'Cancel', onclick: closeStModal }, { id: 'soGo', label: 'Sign out', kind: 'primary', onclick: logoutUser }]);
+        }
+        function logoutUser() {
+            stBusy('soGo', true, 'Signing out...');
+            auth.signOut().then(() => { try { localStorage.removeItem('stardust_uid'); } catch (e) {} leaving = true; location.replace('/auth/'); }).catch(() => stBusy('soGo', false));
+        }
+
+        // ---- delete account ----
+        function openDeleteAccount() {
+            const pw = isPasswordUser();
+            openStModal('Delete account', 'This cannot be undone.',
+                `<div class="st-warn"><b>You will permanently lose:</b><ul><li>Your developer account and UptoZishu store profile</li><li>All your apps, reviews and replies</li><li>Your username and public developer page</li></ul></div>` +
+                `<div class="form-group"><label for="dlType">Type <b>DELETE</b> to confirm</label><input type="text" id="dlType" autocomplete="off" autocapitalize="characters" placeholder="DELETE"></div>` +
+                (pw ? pwField('dlPw', 'Current password', '', 'current-password') : '<small class="st-hint">You will be asked to confirm with Google.</small>') + '<div class="error-msg" id="stErr" style="display:none"></div>',
+                [{ label: 'Cancel', onclick: closeStModal }, { id: 'dlGo', label: 'Delete my account', kind: 'danger', onclick: submitDelete }]);
+        }
+        function submitDelete() {
+            if ($('dlType').value.trim() !== 'DELETE') return stErr('Type DELETE to confirm.');
+            const pwEl = $('dlPw'); if (pwEl && !pwEl.value) return stErr('Enter your current password.');
+            stErr(''); stBusy('dlGo', true, 'Deleting...');
+            const user = auth.currentUser, uid = user.uid;
+            reauth(pwEl ? pwEl.value : '').then(() => {
+                const jobs = [];
+                const rm = path => jobs.push(db.ref(path).remove().catch(() => {}));
+                rm('developers/' + uid); rm('notifications/' + uid); rm('devprofiles/' + uid); rm('users/' + uid);
+                if (window._devUsername) rm('usernames/' + window._devUsername);
+                (allApps || []).forEach(a => { if (a.developerUid === uid) rm('apps/' + a.id); });
+                return db.ref('claims/' + uid).once('value').then(s => { s.forEach(c => { if ((c.val() || {}).status !== 'approved') rm('claims/' + uid + '/' + c.key); }); }).catch(() => {}).then(() => Promise.all(jobs));
+            }).then(() => user.delete()).then(() => {
+                ['stardust_uid', 'stardust_drafts', 'stardust_activity_log', NOTIF_PREF_KEY].forEach(k => { try { localStorage.removeItem(k); } catch (e) {} });
+                leaving = true; location.replace('/auth/');
+            }).catch(e => { stBusy('dlGo', false); stErr(authMsg(e)); });
         }
 
         // ============================================
