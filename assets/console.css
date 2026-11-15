@@ -1568,3 +1568,6 @@
 .st-sheet .form-group input{width:100%;padding:12px 14px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:10px;color:var(--text-light);font:inherit;font-size:15px;outline:none}
 .st-sheet .form-group input:focus{border-color:var(--primary)}
 .st-sheet .error-msg{color:var(--red);font-size:13px}
+.brand-logo{width:36px;height:36px;border-radius:50%;object-fit:cover;display:block;background:var(--bg-input)}
+.brand-logo.big{width:64px;height:64px;margin:0 auto 6px}
+@media(max-width:768px){.sidebar .brand{padding:0 0 14px;display:flex;justify-content:center}}
