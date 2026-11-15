@@ -1474,3 +1474,5 @@
 }
 .org-title { padding-top: 54px; }
 @media (max-width: 600px) { .org-title { padding-top: 0; flex-basis: 100%; } }
+
+.org-body label .opt { font-weight: 400; color: var(--text-gray); font-size: 12px; }

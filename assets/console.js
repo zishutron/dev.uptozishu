@@ -1834,11 +1834,11 @@
             $('orgVerified').hidden = !profVerified;
             $('orgSaveBar').hidden = !profDirty();
             // strength meter
-            const links = ['website', 'github', 'twitter', 'instagram', 'youtube', 'telegram', 'linkedin', 'discord'].some(k => v[k]);
+            const links = !!(v.website || v.github); // X, Instagram, YouTube, LinkedIn, Telegram and Discord are optional and do not count
             const items = [
                 ['Add a logo', !!(profFiles.logo || profLogoUrl), 15], ['Add a cover image', !!(profFiles.cover || profCoverUrl), 10], ['Add your name', v.name.length >= 2, 15],
                 ['Write a tagline', v.tagline.length >= 10, 10], ['Write an About (50+ characters)', v.about.length >= 50, 20], ['Choose account type', !!v.type, 5],
-                ['Add your location', !!v.location, 5], ['Add a contact email', !!v.email, 10], ['Add a website or social link', links, 10]
+                ['Add your location', !!v.location, 5], ['Add a contact email', !!v.email, 10], ['Add your website or GitHub', links, 10]
             ];
             const pct = items.reduce((s, x) => s + (x[1] ? x[2] : 0), 0);
             $('orgPct').textContent = pct + '%'; $('orgMeter').style.width = pct + '%';
