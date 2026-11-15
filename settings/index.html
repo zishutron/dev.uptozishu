@@ -12,7 +12,7 @@
     <title>Settings — UptoZishu Console</title>
     <meta name="robots" content="noindex,nofollow">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <link rel="stylesheet" href="/assets/console.css?v=20261115d">
+    <link rel="stylesheet" href="/assets/console.css?v=20261115e">
 <script>(function(){try{var t=localStorage.getItem('zt_console_theme');var l=t?t==='light':!matchMedia('(prefers-color-scheme: dark)').matches;if(l){var r=document.documentElement.style;r.setProperty('--bg-dark','#f1f5f9');r.setProperty('--bg-card','#ffffff');r.setProperty('--bg-input','#e2e8f0');r.setProperty('--text-light','#0f172a');r.setProperty('--text-gray','#475569');r.setProperty('--border-color','#cbd5e1');}}catch(e){}})();</script>
     <script>try{if(!localStorage.getItem('stardust_uid'))location.replace('/auth/?next='+encodeURIComponent(location.pathname+location.search));}catch(e){}</script>
 </head>
@@ -71,12 +71,6 @@
                 <span>Settings</span>
             </a>
 
-            <div class="bottom-nav">
-                <div class="nav-item" onclick="logoutUser()" style="color:var(--red);">
-                    <svg viewBox="0 0 24 24" style="fill:var(--red);"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
-                    <span>Logout</span>
-                </div>
-            </div>
         </aside>
 
         <main class="main-content">
@@ -94,48 +88,109 @@
             </div>
 
             <div class="page-section active" id="section-settings">
-                <h3 style="margin-bottom:16px;">Settings</h3>
-                <div class="settings-group">
-                    <h4>Account</h4>
-                    <div class="setting-row">
-                        <div><div class="label">Change Password</div><div class="sub">Update your password</div></div>
-                        <button onclick="changePassword()">Change</button>
-                    </div>
-                    <div class="setting-row">
-                        <div><div class="label">Change Email</div><div class="sub">Update your email address</div></div>
-                        <button onclick="changeEmail()">Change</button>
-                    </div>
-                    <div class="setting-row">
-                        <div><div class="label">Delete Account</div><div class="sub">Permanently delete your account</div></div>
-                        <button class="danger" onclick="deleteAccount()">Delete</button>
-                    </div>
-                </div>
-                <div class="settings-group">
-                    <h4>Preferences</h4>
-                    <div class="setting-row">
-                        <div><div class="label">Dark Mode</div><div class="sub">Follows your phone theme by default</div></div>
-                        <div style="display:flex;gap:8px"><button onclick="toggleThemeSettings()">Toggle</button><button onclick="useSystemTheme()">Auto</button></div>
-                    </div>
-                    <div class="setting-row">
-                        <div><div class="label">Language</div><div class="sub">Select your preferred language</div></div>
-                        <button onclick="changeLanguage()">Change</button>
-                    </div>
-                </div>
-                <div class="settings-group">
-                    <h4>Drafts</h4>
-                    <div class="setting-row">
-                        <div><div class="label">Saved Drafts</div><div class="sub">Continue where you left off</div></div>
-                        <button onclick="viewDrafts()">View Drafts</button>
-                    </div>
-                </div>
-                <div class="settings-group">
-                    <h4>Activity Log</h4>
-                    <div class="setting-row">
-                        <div><div class="label">Recent Activity</div><div class="sub">Track your actions</div></div>
-                        <button onclick="viewActivityLog()">View Log</button>
-                    </div>
-                </div>
-            </div>
+<div class="st-wrap">
+
+<section class="st-hero">
+  <div class="st-hero-av" id="stAvatar">D</div>
+  <div class="st-hero-info">
+    <h2 id="stName">Developer</h2>
+    <p id="stEmail">—</p>
+    <div class="st-chips" id="stChips"></div>
+  </div>
+  <div class="st-hero-act">
+    <a class="btn-ghost" href="/profile/">Edit profile</a>
+    <a class="btn-ghost" id="stPublic" href="#" target="_blank" rel="noopener" style="display:none">View public page</a>
+  </div>
+</section>
+
+<h5 class="st-h">Security</h5>
+<div class="st-card" id="stSecurity">
+<button class="st-row" type="button" onclick="openPasswordModal()" id="stRowPw">
+<span class="st-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4"/><path d="M10.8 12.2 20 3M16 7l3 3M14 9l2 2"/></svg></span><span class="st-txt"><b>Change password</b><small id="stRowPwSub">Use a strong password you don't use anywhere else</small></span><svg class="st-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></button>
+<button class="st-row" type="button" onclick="openEmailModal()" id="stRowEmail">
+<span class="st-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg></span><span class="st-txt"><b>Change email</b><small id="stRowEmailSub">Update the email you sign in with</small></span><svg class="st-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></button>
+<button class="st-row" type="button" onclick="openSigninInfo()">
+<span class="st-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 6v6c0 4.5 3.2 8 8 9 4.8-1 8-4.5 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg></span><span class="st-txt"><b>Sign-in details</b><small>Method, verification and last activity</small></span><svg class="st-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></button>
+</div>
+<p class="st-note" id="stGoogleNote" style="display:none">You sign in with Google, so your password and email are managed by your Google account.</p>
+
+<h5 class="st-h">Appearance</h5>
+<div class="st-card st-pad">
+  <div class="st-seg" id="stTheme" role="tablist" aria-label="Theme">
+    <button type="button" data-t="system" onclick="setThemeMode('system')">System</button>
+    <button type="button" data-t="light" onclick="setThemeMode('light')">Light</button>
+    <button type="button" data-t="dark" onclick="setThemeMode('dark')">Dark</button>
+  </div>
+  <small class="st-hint">System follows your phone's theme automatically.</small>
+</div>
+
+<h5 class="st-h">Notifications</h5>
+<div class="st-card">
+<label class="st-row st-switch"><span class="st-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg></span><span class="st-txt"><b>Reviews and replies</b><small>When someone reviews one of your apps</small></span><input type="checkbox" id="nfReview" onchange="setNotifPref('nfReview',this.checked)"><span class="st-sw" aria-hidden="true"></span></label>
+<label class="st-row st-switch"><span class="st-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg></span><span class="st-txt"><b>Claim updates</b><small>Approved or rejected claim requests</small></span><input type="checkbox" id="nfClaim" onchange="setNotifPref('nfClaim',this.checked)"><span class="st-sw" aria-hidden="true"></span></label>
+<label class="st-row st-switch"><span class="st-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16V11a6 6 0 1 1 12 0v5l2 2H4z"/><path d="M10 21h4"/></svg></span><span class="st-txt"><b>Messages from admin</b><small>Announcements and moderation notices</small></span><input type="checkbox" id="nfAdmin" onchange="setNotifPref('nfAdmin',this.checked)"><span class="st-sw" aria-hidden="true"></span></label>
+</div>
+
+<h5 class="st-h">Workspace</h5>
+<div class="st-card">
+<button class="st-row" type="button" onclick="openDrafts()" id="stRowDrafts">
+<span class="st-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg></span><span class="st-txt"><b>Saved drafts</b><small id="stRowDraftsSub">Continue an unfinished app upload</small></span><svg class="st-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></button>
+<button class="st-row" type="button" onclick="openActivity()" id="stRowAct">
+<span class="st-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span><span class="st-txt"><b>Activity log</b><small id="stRowActSub">Your recent actions on this device</small></span><svg class="st-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></button>
+</div>
+
+<h5 class="st-h">Data and privacy</h5>
+<div class="st-card">
+<button class="st-row" type="button" onclick="exportMyData()">
+<span class="st-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11m0 0-4-4m4 4 4-4M5 20h14"/></svg></span><span class="st-txt"><b>Download my data</b><small>Export your account, profile and apps as a JSON file</small></span><svg class="st-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></button>
+<button class="st-row" type="button" onclick="openClearLocal()">
+<span class="st-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></span><span class="st-txt"><b>Clear local data</b><small>Remove drafts, activity log and preferences from this device</small></span><svg class="st-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></button>
+<a class="st-row" href="/privacy/">
+<span class="st-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 6v6c0 4.5 3.2 8 8 9 4.8-1 8-4.5 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg></span><span class="st-txt"><b>Privacy Policy</b><small>How we handle your information</small></span><svg class="st-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></a>
+<a class="st-row" href="/terms/">
+<span class="st-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg></span><span class="st-txt"><b>Terms and Conditions</b><small>Rules for using the Developer Console</small></span><svg class="st-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></a>
+</div>
+
+<h5 class="st-h">Help and support</h5>
+<div class="st-card">
+<a class="st-row" href="mailto:support.stardustofficial@gmail.com?subject=UptoZishu%20Developer%20Console%20support">
+<span class="st-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 .9-1 1.7M12 17h.01"/></svg></span><span class="st-txt"><b>Contact support</b><small>support.stardustofficial@gmail.com</small></span><svg class="st-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></a>
+<a class="st-row" href="mailto:support.stardustofficial@gmail.com?subject=Problem%20report%20-%20Developer%20Console">
+<span class="st-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 9V7a3 3 0 0 1 6 0v2M7 9h10v5a5 5 0 0 1-10 0zM3 13h4M17 13h4M4 19l3-2M20 19l-3-2"/></svg></span><span class="st-txt"><b>Report a problem</b><small>Tell us what went wrong</small></span><svg class="st-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></a>
+<a class="st-row" href="/apps/claim/">
+<span class="st-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg></span><span class="st-txt"><b>Claim an app</b><small>Request ownership of an app already on the store</small></span><svg class="st-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></a>
+<a class="st-row" href="https://uptozishu.zishuai.cloud/" target="_blank" rel="noopener">
+<span class="st-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9 5.5 4h13L20 9M4 9v10h16V9M4 9h16M9 19v-5h6v5"/></svg></span><span class="st-txt"><b>Open UptoZishu store</b><small>See your apps as users do</small></span><svg class="st-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></a>
+</div>
+
+<h5 class="st-h">Session</h5>
+<div class="st-card">
+<button class="st-row" type="button" onclick="openSignOut()">
+<span class="st-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h4M16 8l4 4-4 4M20 12H9"/></svg></span><span class="st-txt"><b>Sign out</b><small>Sign out of the Developer Console on this device</small></span><svg class="st-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></button>
+</div>
+
+<h5 class="st-h st-danger-h">Danger zone</h5>
+<div class="st-card st-danger">
+<button class="st-row danger" type="button" onclick="openDeleteAccount()">
+<span class="st-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></span><span class="st-txt"><b>Delete account</b><small>Permanently delete your account, apps and store profile</small></span><svg class="st-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></button>
+</div>
+
+<p class="st-foot">UptoZishu Developer Console · Version 2.0<br>&copy; <span id="stYear">2026</span> UptoZishu. All rights reserved.</p>
+</div>
+</div>
+
+<!-- generic modal for all settings dialogs -->
+<div class="modal-overlay sheet-overlay" id="stModal" onclick="if(event.target===this)closeStModal()">
+  <div class="sheet st-sheet" role="dialog" aria-modal="true" aria-labelledby="stModalTitle">
+    <header class="sheet-head">
+      <div class="sheet-title"><h3 id="stModalTitle"></h3><p id="stModalSub"></p></div>
+      <button type="button" class="sheet-x" onclick="closeStModal()" aria-label="Close">&#10005;</button>
+    </header>
+    <div class="sheet-body" id="stModalBody"></div>
+    <div class="sheet-foot" id="stModalFoot"></div>
+  </div>
+</div>
+<div class="st-toast" id="stToast" role="status"></div>
         </main>
     </div>
 
@@ -144,6 +199,6 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
-    <script src="/assets/console.js?v=20261115d"></script>
+    <script src="/assets/console.js?v=20261115e"></script>
 </body>
 </html>
