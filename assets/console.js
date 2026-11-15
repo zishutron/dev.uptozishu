@@ -19,7 +19,21 @@
         // ============================================
         // IMGBB API KEY
         // ============================================
-        const IMGBB_KEY = "550a3bcd47c1b0a86a9f2ba7a41770b6";
+        // Several keys: uploads are spread across them and, if one runs out of its limit, the next one is used automatically.
+        const IMGBB_KEYS = [
+            "550a3bcd47c1b0a86a9f2ba7a41770b6",
+            "742851e212792d6bfc672313108289c0",
+            "bf18416a217228e4e067a94faa6c10a8",
+            "d75c4ca4974dc5b81fd0e1739da86b52",
+            "36645f7ee1bc25d4b4e76c05cfef33d4",
+            "89a6970a7e668212364be3a74c198aba",
+            "721373c358c1f1d72259d8d8523b677a",
+            "207a855fc5ff274c3c2380cfad628b4b",
+            "736e4e92f0e1d37c2ddf9d68962b02c7",
+            "0c4ee72d5170a06cde2bb96ebba382e1",
+            "9fa796204c10145c452d16e329d708ff"
+        ];
+        const imgbbBad = {}; // key -> time it last failed (skipped for 10 minutes)
 
         // ============================================
         // STATE
@@ -828,31 +842,25 @@
         const shotsClaim = createShotManager('claimScreensPreview', 'claimScreenshots');
 
         function uploadToImgBB(file) {
-            return new Promise((resolve, reject) => {
-                const formData = new FormData();
-                formData.append('image', file);
-                fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_KEY}`, {
-                        method: 'POST',
-                        body: formData
-                    })
-                    .then(res => res.json())
+            const asData = () => new Promise((resolve, reject) => { const r = new FileReader(); r.onload = e => resolve(e.target.result); r.onerror = reject; r.readAsDataURL(file); });
+            const now = Date.now(), n = IMGBB_KEYS.length, start = Math.floor(Math.random() * n);
+            let order = []; for (let i = 0; i < n; i++) order.push(IMGBB_KEYS[(start + i) % n]);
+            const good = order.filter(k => !imgbbBad[k] || now - imgbbBad[k] > 600000);
+            order = good.length ? good : order; // every key looked bad: try them all again
+            let netErrors = 0;
+            const tryKey = i => {
+                if (i >= order.length || netErrors >= 2) return asData(); // nothing worked: keep the image inline like before
+                const key = order[i], fd = new FormData(); fd.append('image', file);
+                return fetch('https://api.imgbb.com/1/upload?key=' + key, { method: 'POST', body: fd })
+                    .then(res => res.json().catch(() => ({ success: false })))
                     .then(data => {
-                        if (data.success) {
-                            resolve(data.data.url);
-                        } else {
-                            const reader = new FileReader();
-                            reader.onload = e => resolve(e.target.result);
-                            reader.onerror = reject;
-                            reader.readAsDataURL(file);
-                        }
+                        if (data && data.success && data.data && data.data.url) { delete imgbbBad[key]; return data.data.url; }
+                        imgbbBad[key] = Date.now(); // limit reached or key rejected: use the next key
+                        return tryKey(i + 1);
                     })
-                    .catch(() => {
-                        const reader = new FileReader();
-                        reader.onload = e => resolve(e.target.result);
-                        reader.onerror = reject;
-                        reader.readAsDataURL(file);
-                    });
-            });
+                    .catch(() => { netErrors++; return tryKey(i + 1); });
+            };
+            return tryKey(0);
         }
 
         // ---- App permissions picker (shown to users on the store's app page) ----
