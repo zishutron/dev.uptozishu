@@ -1989,8 +1989,15 @@
             const up = {};
             up['tickets/' + id] = t;
             up['userTickets/' + uid + '/' + id] = { subject: t.subject, category: t.category, status: 'open', lastBy: 'dev', createdAt: now, updatedAt: now, unread: false };
-            db.ref().update(up).then(() => { addActivityLog('Opened support ticket'); return sendTicketMail('opened', id); }).then(() => { location.href = '/support/ticket/?id=' + encodeURIComponent(id); })
+            db.ref().update(up).then(() => { addActivityLog('Opened support ticket'); return sendTicketMail('opened', id); }).then(() => showTicketSent(id, t.email))
                 .catch(() => { btn.disabled = false; btn.textContent = 'Send ticket'; tkErr('Could not send the ticket. Check your connection and try again.'); });
+        }
+
+        function showTicketSent(id, email) {
+            closeTicketForm();
+            $('tkSentMail').textContent = email || 'your email';
+            $('tkSentGo').href = '/support/ticket/?id=' + encodeURIComponent(id);
+            $('tkSent').classList.add('open');
         }
 
         // ---- single ticket page ----
