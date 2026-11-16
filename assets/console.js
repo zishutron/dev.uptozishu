@@ -255,6 +255,7 @@
             // Load data
             loadApps();
             loadNotifications();
+            watchUserTickets();
             initPage();
             localStorage.setItem('stardust_uid', user.uid);
             // accounts without a username (older developers) finish their profile first
@@ -330,7 +331,7 @@
         // ============================================
         // NAVIGATION
         // ============================================
-        const PAGE_URL = { dashboard: '/', myapps: '/apps/', upload: '/upload/', analytics: '/analytics/', reviews: '/reviews/', notifications: '/notifications/', profile: '/profile/', settings: '/settings/' };
+        const PAGE_URL = { dashboard: '/', myapps: '/apps/', upload: '/upload/', analytics: '/analytics/', reviews: '/reviews/', notifications: '/notifications/', profile: '/profile/', settings: '/settings/', support: '/support/' };
         function switchPage(page) {
             if (page === currentPage) return;
             location.href = PAGE_URL[page] || '/';
@@ -347,6 +348,8 @@
             if (currentPage === 'myapps') initAppSearch();
             if (currentPage === 'claim') initClaimPage();
             if (currentPage === 'settings') initSettings();
+            if (currentPage === 'support') renderTicketList();
+            if (currentPage === 'ticket') initTicketPage();
         }
 
         // ============================================
@@ -1601,13 +1604,13 @@
             }
             allNotifications.forEach(n => {
                 const div = document.createElement('div');
-                const isRev = n.type === 'review' && n.appId;
-                div.className = 'notif-item' + (isRev ? ' notif-link' : '') + (n.read ? '' : ' unread');
+                const isRev = n.type === 'review' && n.appId, isTk = n.type === 'ticket' && n.ticketId;
+                div.className = 'notif-item' + (isRev || isTk ? ' notif-link' : '') + (n.read ? '' : ' unread');
                 const stars = isRev && n.rating ? '★'.repeat(Math.round(n.rating)) + '☆'.repeat(5 - Math.round(n.rating)) : '';
-                const sub = isRev ? `<div class="notif-sub">${stars ? `<span class="notif-stars">${stars}</span> ` : ''}${n.snippet ? escHtml(n.snippet) : ''}<span class="notif-go">View review ›</span></div>` : '';
+                const sub = isRev ? `<div class="notif-sub">${stars ? `<span class="notif-stars">${stars}</span> ` : ''}${n.snippet ? escHtml(n.snippet) : ''}<span class="notif-go">View review ›</span></div>` : isTk ? `<div class="notif-sub">${n.snippet ? escHtml(n.snippet) : ''}<span class="notif-go">Open ticket ›</span></div>` : '';
                 div.innerHTML = `
                     <div class="notif-icon">
-                        ${isRev ? '<svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>' : '<svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg>'}
+                        ${isTk ? '<svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>' : isRev ? '<svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>' : '<svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg>'}
                     </div>
                     <div class="notif-main"><div class="notif-text">${escHtml(n.text)}</div>${sub}</div>
                     <div class="notif-time">${new Date(n.timestamp).toLocaleDateString()}</div>
@@ -1637,6 +1640,12 @@
             el.addEventListener('pointermove', e => { if (Math.abs(e.clientX - sx) > 10 || Math.abs(e.clientY - sy) > 10) cancel(); });
             ['pointerup', 'pointercancel', 'pointerleave'].forEach(t => el.addEventListener(t, cancel));
             el.addEventListener('contextmenu', e => { e.preventDefault(); cancel(); longAt = Date.now(); openNotifMenu(n); });
+            if (n.type === 'ticket' && n.ticketId) {
+                el.addEventListener('click', () => {
+                    if (Date.now() - longAt < 800) return;
+                    location.href = '/support/ticket/?id=' + encodeURIComponent(n.ticketId);
+                });
+            }
             // tap a review notification -> open that review
             if (n.type === 'review' && n.appId) {
                 el.addEventListener('click', () => {
@@ -1912,6 +1921,120 @@
                 alert('Profile saved. It will appear on the store after the next store update.');
             }).catch(x => { btn.disabled = false; btn.textContent = 'Save changes'; alert((x && x.message ? x.message : 'Could not save.') + (/permission/i.test((x && x.message) || '') ? '\nPublish the latest Firebase rules (devprofiles).' : '')); });
         }
+
+        // ============================================
+        // SUPPORT TICKETS
+        // ============================================
+        const TK_STATUS = { open: ['Open', 'warn'], answered: ['Answered', 'ok'], closed: ['Closed', 'mute'] };
+        const TK_CATS = { account: 'Account and login', app: 'App upload or listing', review: 'Reviews and ratings', claim: 'Claim request', bug: 'Bug or technical problem', other: 'Something else' };
+        let userTickets = {}, tkFilter = 'all', tkId = null, tkData = null, tkRef = null;
+        const tkPill = s => { const m = TK_STATUS[s] || TK_STATUS.open; return `<span class="tk-pill ${m[1]}">${m[0]}</span>`; };
+        const tkTime = t => { if (!t) return ''; const d = new Date(t), now = new Date(); const same = d.toDateString() === now.toDateString(); return same ? d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : d.toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' }) + ', ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); };
+        function watchUserTickets() {
+            if (!currentUser) return;
+            db.ref('userTickets/' + currentUser.uid).on('value', snap => {
+                userTickets = snap.val() || {};
+                setBadge($('ticketBadge'), Object.values(userTickets).filter(t => t && t.unread).length);
+                if (currentPage === 'support') renderTicketList();
+            }, () => { if (currentPage === 'support') renderTicketList(); });
+        }
+        function tkList() { return Object.keys(userTickets).map(id => ({ id, ...userTickets[id] })).filter(t => t && t.subject).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0)); }
+        function setTkFilter(f) { tkFilter = f; renderTicketList(); }
+        function renderTicketList() {
+            const box = $('ticketList'); if (!box) return;
+            const all = tkList();
+            const cnt = s => s === 'all' ? all.length : all.filter(t => t.status === s).length;
+            $('spTabs').innerHTML = ['all', 'open', 'answered', 'closed'].map(s => `<button type="button" class="${tkFilter === s ? 'on' : ''}" onclick="setTkFilter('${s}')">${s[0].toUpperCase() + s.slice(1)} <i>${cnt(s)}</i></button>`).join('');
+            const list = tkFilter === 'all' ? all : all.filter(t => t.status === tkFilter);
+            if (!list.length) {
+                box.innerHTML = `<div class="sp-empty"><div class="sp-empty-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.5 7.2L3 21l1.8-5.5A8 8 0 1 1 21 12z"/></svg></div><b>${all.length ? 'No ' + tkFilter + ' tickets' : 'No tickets yet'}</b><p>${all.length ? 'Try a different filter.' : 'Having a problem or a question? Open a ticket and we will reply right here.'}</p>${all.length ? '' : '<button type="button" class="btn-primary" onclick="openTicketForm()">Open your first ticket</button>'}</div>`;
+                return;
+            }
+            box.innerHTML = list.map(t => `<a class="tk-item${t.unread ? ' unread' : ''}" href="/support/ticket/?id=${encodeURIComponent(t.id)}">
+                <span class="tk-dot"></span>
+                <span class="tk-main"><b>${escHtml(t.subject)}</b><small>${escHtml(TK_CATS[t.category] || 'General')} · ${t.lastBy === 'admin' ? 'Support replied' : 'You wrote'} · ${tkTime(t.updatedAt)}</small></span>
+                ${t.unread ? '<span class="tk-new">New reply</span>' : ''}${tkPill(t.status)}
+                <svg class="st-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></a>`).join('');
+        }
+        function openTicketForm() {
+            if (tkList().filter(t => t.status !== 'closed').length >= 5) { stToastTk('You already have 5 open tickets. Please wait for a reply or close one.'); return; }
+            const apps = (allApps || []).filter(a => a.developerUid === currentUser.uid);
+            $('tkApp').innerHTML = '<option value="">Not about a specific app</option>' + apps.map(a => `<option value="${escHtml(a.id)}">${escHtml(a.name || a.id)}</option>`).join('');
+            ['tkSubject', 'tkMsg'].forEach(i => $(i).value = ''); $('tkCat').value = 'app'; $('tkPrio').value = 'normal';
+            $('tkErr').style.display = 'none'; $('tkCount').textContent = '0 / 2000';
+            $('tkModal').classList.add('open'); setTimeout(() => $('tkSubject').focus(), 60);
+        }
+        function closeTicketForm() { $('tkModal').classList.remove('open'); }
+        function stToastTk(m) { const t = $('stToast'); if (!t) { alert(m); return; } t.textContent = m; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3000); }
+        function tkErr(m) { const e = $('tkErr'); e.textContent = m; e.style.display = m ? '' : 'none'; }
+        function submitTicket() {
+            const subject = $('tkSubject').value.trim(), text = $('tkMsg').value.trim();
+            if (subject.length < 4) return tkErr('Add a short subject (at least 4 characters).');
+            if (text.length < 10) return tkErr('Please describe the problem in a few more words (at least 10 characters).');
+            tkErr('');
+            const btn = $('tkSend'); btn.disabled = true; btn.textContent = 'Sending...';
+            const uid = currentUser.uid, now = Date.now(), id = db.ref('tickets').push().key, mid = db.ref('tickets/' + id + '/messages').push().key;
+            const name = currentUser.displayName || (currentUser.email || '').split('@')[0] || 'Developer';
+            const appId = $('tkApp').value, app = (allApps || []).find(a => a.id === appId);
+            const t = { uid, devName: name, email: currentUser.email || '', subject: subject.slice(0, 100), category: $('tkCat').value, priority: $('tkPrio').value, appId: appId || '', appName: app ? String(app.name || '').slice(0, 100) : '', status: 'open', lastBy: 'dev', createdAt: now, updatedAt: now, messages: { [mid]: { by: 'dev', name, text: text.slice(0, 2000), at: now } } };
+            const up = {};
+            up['tickets/' + id] = t;
+            up['userTickets/' + uid + '/' + id] = { subject: t.subject, category: t.category, status: 'open', lastBy: 'dev', createdAt: now, updatedAt: now, unread: false };
+            db.ref().update(up).then(() => { addActivityLog('Opened support ticket'); location.href = '/support/ticket/?id=' + encodeURIComponent(id); })
+                .catch(() => { btn.disabled = false; btn.textContent = 'Send ticket'; tkErr('Could not send the ticket. Check your connection and try again.'); });
+        }
+
+        // ---- single ticket page ----
+        function initTicketPage() {
+            tkId = new URLSearchParams(location.search).get('id');
+            if (!tkId) { showTkMissing(); return; }
+            tkRef = db.ref('tickets/' + tkId);
+            tkRef.on('value', snap => {
+                const t = snap.val();
+                if (!t || t.uid !== currentUser.uid) { showTkMissing(); return; }
+                tkData = t; renderTicket();
+                db.ref('userTickets/' + currentUser.uid + '/' + tkId).once('value').then(s => { const v = s.val(); if (v && v.unread) db.ref('userTickets/' + currentUser.uid + '/' + tkId + '/unread').set(false); }).catch(() => {});
+            }, showTkMissing);
+            const ta = $('tkReply'); if (ta) ta.addEventListener('input', () => { $('tkReplyCount').textContent = ta.value.length + ' / 2000'; });
+        }
+        function showTkMissing() { $('tkWrap').innerHTML = '<div class="sp-empty"><b>Ticket not found</b><p>This ticket does not exist or you do not have access to it.</p><a class="btn-primary" href="/support/">Back to Support</a></div>'; }
+        function renderTicket() {
+            const t = tkData; $('tkSubject').textContent = t.subject;
+            $('tkStatus').innerHTML = tkPill(t.status);
+            $('tkMeta').textContent = '#' + tkId.slice(-6).toUpperCase() + ' · ' + (TK_CATS[t.category] || 'General') + (t.appName ? ' · ' + t.appName : '') + ' · Opened ' + tkTime(t.createdAt);
+            const msgs = Object.keys(t.messages || {}).map(k => ({ id: k, ...t.messages[k] })).sort((a, b) => (a.at || 0) - (b.at || 0));
+            const th = $('tkThread');
+            th.innerHTML = msgs.map(m => m.by === 'admin'
+                ? `<div class="tk-msg admin"><div class="tk-who"><span class="tk-av"><img src="/favicon.png" alt=""></span><b>UptoZishu Support</b><em>Official</em><time>${tkTime(m.at)}</time></div><div class="tk-bub">${escHtml(m.text)}</div></div>`
+                : `<div class="tk-msg dev"><div class="tk-who"><b>You</b><time>${tkTime(m.at)}</time></div><div class="tk-bub">${escHtml(m.text)}</div></div>`).join('');
+            const closed = t.status === 'closed';
+            $('tkCompose').style.display = closed ? 'none' : '';
+            $('tkClosedBar').style.display = closed ? '' : 'none';
+            const wait = !closed && t.lastBy === 'dev';
+            $('tkWait').style.display = wait ? '' : 'none';
+            if (!tkRender1) { tkRender1 = true; setTimeout(() => window.scrollTo(0, document.body.scrollHeight), 50); }
+        }
+        let tkRender1 = false;
+        function sendTicketReply() {
+            const ta = $('tkReply'), text = ta.value.trim(); if (text.length < 2) { ta.focus(); return; }
+            const btn = $('tkReplySend'); btn.disabled = true; btn.textContent = 'Sending...';
+            const uid = currentUser.uid, now = Date.now(), mid = db.ref('tickets/' + tkId + '/messages').push().key;
+            const name = currentUser.displayName || (currentUser.email || '').split('@')[0] || 'Developer';
+            const up = {};
+            up['tickets/' + tkId + '/messages/' + mid] = { by: 'dev', name, text: text.slice(0, 2000), at: now };
+            up['tickets/' + tkId + '/status'] = 'open'; up['tickets/' + tkId + '/updatedAt'] = now; up['tickets/' + tkId + '/lastBy'] = 'dev';
+            up['userTickets/' + uid + '/' + tkId + '/status'] = 'open'; up['userTickets/' + uid + '/' + tkId + '/updatedAt'] = now; up['userTickets/' + uid + '/' + tkId + '/lastBy'] = 'dev'; up['userTickets/' + uid + '/' + tkId + '/unread'] = false;
+            db.ref().update(up).then(() => { ta.value = ''; $('tkReplyCount').textContent = '0 / 2000'; btn.disabled = false; btn.textContent = 'Send reply'; setTimeout(() => window.scrollTo(0, document.body.scrollHeight), 80); })
+                .catch(() => { btn.disabled = false; btn.textContent = 'Send reply'; stToastTk('Could not send. Please try again.'); });
+        }
+        function setTicketStatus(status) {
+            const uid = currentUser.uid, now = Date.now(), up = {};
+            up['tickets/' + tkId + '/status'] = status; up['tickets/' + tkId + '/updatedAt'] = now;
+            up['userTickets/' + uid + '/' + tkId + '/status'] = status; up['userTickets/' + uid + '/' + tkId + '/updatedAt'] = now;
+            db.ref().update(up).catch(() => stToastTk('Could not update the ticket.'));
+        }
+        function closeTicket() { if (confirm('Close this ticket? You can reopen it later.')) setTicketStatus('closed'); }
+        function reopenTicket() { setTicketStatus('open'); }
 
         // ============================================
         // SETTINGS (professional dialogs; English only)
