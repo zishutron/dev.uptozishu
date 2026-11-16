@@ -1926,7 +1926,7 @@
         // SUPPORT TICKETS
         // ============================================
         // Paste your Google Apps Script web-app URL here to enable ticket emails (see mail-script/README.txt)
-        const MAIL_ENDPOINT = '';
+        const MAIL_ENDPOINT = 'https://script.google.com/macros/s/AKfycbxnsa5QzCWtto5671_JcJlefPOV9YcGlZUHMW9CrH1VuG0Qa8cNe94RLYpkFMC7G6Ga4g/exec';
         function sendTicketMail(type, ticketId) {
             if (!MAIL_ENDPOINT || !currentUser) return Promise.resolve();
             return currentUser.getIdToken().then(token => Promise.race([
