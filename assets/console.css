@@ -1624,3 +1624,11 @@
 .tk-actions .st-hint{margin:0}
 .tk-closedbar{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--bg-card);border:1px solid var(--border-color);border-radius:14px;padding:12px 16px;color:var(--text-gray);font-size:14px}
 @media(max-width:600px){.tk-two{grid-template-columns:1fr}.tk-msg{max-width:96%}.sp-new{width:100%}}
+@media(max-width:600px){
+.tk-compose{padding:10px}
+.tk-compose textarea{height:46px;min-height:46px;max-height:200px;padding:12px 18px;border-radius:23px;resize:none;transition:height .2s,border-radius .2s}
+.tk-compose textarea:focus,.tk-compose textarea:not(:placeholder-shown){height:120px;border-radius:14px;padding:12px 14px}
+.tk-actions{flex-wrap:nowrap;gap:10px}
+.tk-actions .st-hint,.tk-actions>span[style]{display:none}
+.tk-actions button{flex:1;padding:12px 8px;white-space:nowrap}
+}
