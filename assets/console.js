@@ -522,10 +522,18 @@
             clear.style.display = input.value ? 'block' : 'none';
         }
 
+        function buildStatusOptions(app) {
+            const cur = app.status || 'live';
+            const opts = { live: [['live', 'Live: visible in the store'], ['draft', 'Draft: hidden']], pending: [['pending', 'In review: waiting for approval'], ['draft', 'Withdraw to draft']], draft: [['draft', 'Draft: hidden'], ['pending', 'Submit for review']], rejected: [['rejected', 'Rejected: not submitted'], ['draft', 'Keep as draft'], ['pending', 'Submit for review again']], suspended: [['suspended', 'Suspended by UptoZishu']], approved: [['live', 'Live: visible in the store'], ['draft', 'Draft: hidden']] }[cur] || [['draft', 'Draft: hidden'], ['pending', 'Submit for review']];
+            const sel = $('editStatus'); sel.innerHTML = opts.map(o => `<option value="${o[0]}">${o[1]}</option>`).join('');
+            sel.value = cur === 'approved' ? 'live' : cur; sel.disabled = cur === 'suspended';
+        }
         function appMatches(app) {
             const live = (app.status === 'live' || app.status === 'approved');
             if (appStatus === 'live' && !live) return false;
             if (appStatus === 'draft' && app.status !== 'draft') return false;
+            if (appStatus === 'pending' && app.status !== 'pending') return false;
+            if (appStatus === 'rejected' && app.status !== 'rejected') return false;
             if (!appQuery) return true;
             const hay = [app.name, app.package, app.category, app.version, app.tags, app.shortDescription, app.status].join(' ').toLowerCase();
             return appQuery.split(/\s+/).every(w => hay.includes(w));
@@ -561,6 +569,8 @@
                     'live': { class: 'live', label: 'Live' },
                     'approved': { class: 'live', label: 'Live' },
                     'draft': { class: 'draft', label: 'Draft' },
+                    'pending': { class: 'pend', label: 'In review' },
+                    'rejected': { class: 'rej', label: 'Rejected' },
                     'suspended': { class: 'susp', label: 'Suspended' }
                 };
                 const st = statusMap[app.status] || statusMap['live'];
@@ -575,6 +585,7 @@
                         </div>
                     </div>
                     <span class="app-status ${st.class}">${st.label}</span>
+                    ${app.status === 'rejected' && app.rejectReason ? `<div class="app-reject"><b>Rejected:</b> ${escHtml(app.rejectReason)}<br><small>Fix the issue, then edit the app and submit it for review again.</small></div>` : ''}
                     <div class="app-actions">
                         <button onclick="viewAppDetails('${app.id}')">Details</button>
                         <button onclick="openEditModal('${app.id}')">Edit</button>
@@ -883,7 +894,7 @@
         function handleUpload(e) {
             e.preventDefault();
             const btn = $('uploadBtnText');
-            btn.textContent = 'Publishing...';
+            btn.textContent = 'Submitting...';
 
             const iconFile = $('upIcon').files[0];
             const bannerFile = $('upBanner').files[0];
@@ -902,7 +913,7 @@
             Promise.all(uploadPromises).then(() => {
                 const packageName = $('upPackage').value.trim();
                 const status = $('upStatus').value;
-                const finalStatus = status === 'draft' ? 'draft' : 'live';
+                const finalStatus = status === 'draft' ? 'draft' : 'pending';
 
                 const appData = {
                     name: $('upName').value,
@@ -931,6 +942,7 @@
                     views: 0,
                     rating: 0,
                     status: finalStatus,
+                    submittedAt: finalStatus === 'pending' ? Date.now() : null,
                     timestamp: Date.now(),
                     updatedDate: new Date().toISOString().split('T')[0],
                     verified: false,
@@ -938,7 +950,7 @@
                 };
 
                 db.ref('apps').push(appData).then(() => {
-                    btn.textContent = 'Publish App';
+                    btn.textContent = 'Submit for Review';
                     $('uploadForm').reset();
                     renderPermChips('up');
                     $('iconPreview').innerHTML = '';
@@ -954,18 +966,18 @@
 
                     if (finalStatus === 'draft') {
                         addNotification(`App "${appData.name}" saved as draft!`);
-                        alert('App saved as draft! You can publish it later.');
+                        alert('App saved as draft! You can submit it for review later.');
                     } else {
-                        addNotification(`App "${appData.name}" is now LIVE on the store!`);
-                        alert('App published successfully! It is now live on UptoZishu. It appears on the website within about 10 minutes.');
+                        addNotification(`App "${appData.name}" was submitted for review. We will notify you and email you once it is approved or rejected.`);
+                        alert('Your app was submitted for review.\n\nOur team will check it and you will get a notification and an email with the decision. Once approved it goes live on UptoZishu.');
                     }
                     switchPage('myapps');
                 }).catch(err => {
-                    btn.textContent = 'Publish App';
+                    btn.textContent = 'Submit for Review';
                     alert('Upload failed: ' + err.message);
                 });
             }).catch(err => {
-                btn.textContent = 'Publish App';
+                btn.textContent = 'Submit for Review';
                 alert('Image upload failed: ' + err.message);
             });
         }
@@ -990,7 +1002,7 @@
             $('detIcon').src = app.icon || 'https://img.icons8.com/color/144/android-os.png';
             $('detTitle').textContent = app.name || 'App';
             $('detSub').textContent = [app.package, app.version].filter(Boolean).join(' · ');
-            const pill = $('detStatus'); pill.textContent = live ? 'Live' : 'Draft'; pill.className = 'pill ' + (live ? 'live' : 'draft');
+            const pill = $('detStatus'); const stl = { pending: ['In review', 'pend'], rejected: ['Rejected', 'rej'], suspended: ['Suspended', 'susp'] }[app.status]; pill.textContent = stl ? stl[0] : (live ? 'Live' : 'Draft'); pill.className = 'pill ' + (stl ? stl[1] : (live ? 'live' : 'draft'));
             $('detBody').innerHTML = `
                 <div class="det-stats">
                     <div class="det-stat"><b>${n(app.downloadCount)}</b><span>Downloads</span></div>
@@ -1055,7 +1067,7 @@
             $('editPermissions').value = app.permissions || '';
             renderPermChips('edit');
             $('editWhatsNew').value = app.whatsNew || '';
-            $('editStatus').value = app.status || 'live';
+            buildStatusOptions(app);
             // Clear previews
             $('editIconPreview').innerHTML = '';
             $('editBannerPreview').innerHTML = '';
@@ -1094,7 +1106,6 @@
                 $('editVersion').value = '';
                 $('editVersion').placeholder = app.version ? 'Current ' + app.version + ', enter the new one' : 'v1.0.1';
                 $('editWhatsNew').value = '';
-                $('editStatus').value = 'live';
             }
             // number the sections in the order they appear (the release section moves to the top in update mode)
             const order = (isUpdate ? ['secRelease', 'secBasic'] : ['secBasic', 'secRelease']).concat(['secImages', 'secMore', 'secPerm']).concat(isUpdate ? [] : ['secStatus']);
@@ -1212,13 +1223,16 @@
                     minAndroid: $('editMinAndroid').value.trim(),
                     permissions: $('editPermissions').value.trim(),
                     whatsNew: $('editWhatsNew').value,
-                    status: isUpdate ? 'live' : $('editStatus').value,
+                    status: isUpdate ? (app.status === 'approved' ? 'live' : app.status) : $('editStatus').value,
                     updatedDate: new Date().toISOString().split('T')[0]
                 };
                 // Only update images if new files were uploaded
                 if (iconUrl) updates.icon = iconUrl;
                 if (bannerUrl) updates.banner = bannerUrl;
                 updates.screenshot = screenshotUrls.join(','); // full ordered list (removed screenshots are gone, new ones are added)
+                const submitting = !isUpdate && updates.status === 'pending' && app.status !== 'pending';
+                if (submitting) { updates.submittedAt = Date.now(); updates.rejectReason = null; }
+                const wasLive = app.status === 'live' || app.status === 'approved';
                 if (isUpdate) {
                     const history = Array.isArray(app.versionHistory) ? app.versionHistory.slice() : [];
                     if (app.version && app.version !== updates.version) history.push(app.version);
@@ -1229,13 +1243,16 @@
                     if (isUpdate) {
                         addActivityLog(`Update for "${updates.name}" to ${updates.version} published`);
                         addNotification(`Update for "${updates.name}" is now LIVE!`);
+                    } else if (submitting) {
+                        addActivityLog(`App "${updates.name}" submitted for review`);
+                        addNotification(`App "${updates.name}" was submitted for review. We will notify you and email you once it is approved or rejected.`);
                     } else {
                         addActivityLog(`App "${updates.name}" fully edited`);
                         addNotification(`App "${updates.name}" updated successfully!`);
                     }
                     closeEditModal();
                     renderMyApps();
-                    alert(isUpdate ? 'Update published successfully!' : 'App updated successfully!');
+                    alert(submitting ? 'Your app was submitted for review.\n\nYou will get a notification and an email with the decision.' : isUpdate ? (wasLive ? 'Update published successfully!' : 'Update saved. It goes live after your app is approved.') : 'App updated successfully!');
                 });
             }).catch(err => {
                 alert((isUpdate ? 'Could not publish the update: ' : 'Could not save: ') + err.message);
@@ -1604,10 +1621,10 @@
             }
             allNotifications.forEach(n => {
                 const div = document.createElement('div');
-                const isRev = n.type === 'review' && n.appId, isTk = n.type === 'ticket' && n.ticketId;
-                div.className = 'notif-item' + (isRev || isTk ? ' notif-link' : '') + (n.read ? '' : ' unread');
+                const isRev = n.type === 'review' && n.appId, isTk = n.type === 'ticket' && n.ticketId, isAr = (n.type === 'appreview' || n.type === 'profile');
+                div.className = 'notif-item' + (isRev || isTk || isAr ? ' notif-link' : '') + (n.read ? '' : ' unread');
                 const stars = isRev && n.rating ? '★'.repeat(Math.round(n.rating)) + '☆'.repeat(5 - Math.round(n.rating)) : '';
-                const sub = isRev ? `<div class="notif-sub">${stars ? `<span class="notif-stars">${stars}</span> ` : ''}${n.snippet ? escHtml(n.snippet) : ''}<span class="notif-go">View review ›</span></div>` : isTk ? `<div class="notif-sub">${n.snippet ? escHtml(n.snippet) : ''}<span class="notif-go">Open ticket ›</span></div>` : '';
+                const sub = isRev ? `<div class="notif-sub">${stars ? `<span class="notif-stars">${stars}</span> ` : ''}${n.snippet ? escHtml(n.snippet) : ''}<span class="notif-go">View review ›</span></div>` : isTk ? `<div class="notif-sub">${n.snippet ? escHtml(n.snippet) : ''}<span class="notif-go">Open ticket ›</span></div>` : isAr ? `<div class="notif-sub">${n.reason ? 'Reason: ' + escHtml(n.reason) : ''}<span class="notif-go">Open ›</span></div>` : '';
                 div.innerHTML = `
                     <div class="notif-icon">
                         ${isTk ? '<svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>' : isRev ? '<svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>' : '<svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg>'}
@@ -1640,6 +1657,9 @@
             el.addEventListener('pointermove', e => { if (Math.abs(e.clientX - sx) > 10 || Math.abs(e.clientY - sy) > 10) cancel(); });
             ['pointerup', 'pointercancel', 'pointerleave'].forEach(t => el.addEventListener(t, cancel));
             el.addEventListener('contextmenu', e => { e.preventDefault(); cancel(); longAt = Date.now(); openNotifMenu(n); });
+            if (n.type === 'appreview' || n.type === 'profile') {
+                el.addEventListener('click', () => { if (Date.now() - longAt < 800) return; location.href = n.type === 'profile' ? '/profile/' : '/apps/'; });
+            }
             if (n.type === 'ticket' && n.ticketId) {
                 el.addEventListener('click', () => {
                     if (Date.now() - longAt < 800) return;
@@ -1793,6 +1813,16 @@
         const PROF_IDS = { name: 'profName', tagline: 'profTagline', type: 'profType', about: 'profAbout', location: 'profLocation', founded: 'profFounded', email: 'profEmail', website: 'profWebsite', github: 'profGithub', twitter: 'profTwitter', instagram: 'profInstagram', youtube: 'profYoutube', telegram: 'profTelegram', linkedin: 'profLinkedin', discord: 'profDiscord' };
         const PROF_TYPES = { individual: 'Individual developer', studio: 'Studio / team', company: 'Company', opensource: 'Open source', student: 'Student developer' };
         let profSaved = {}, profFiles = { logo: null, cover: null }, profUser = '', profCreated = 0, profVerified = false, profBound = false, profLogoUrl = '', profCoverUrl = '';
+        let profPending = null;
+        function showProfReview() {
+            const el = $('profReview'); if (!el) return;
+            if (!profPending) { el.hidden = true; return; }
+            const rej = profPending.status === 'rejected';
+            el.hidden = false; el.className = 'org-review ' + (rej ? 'rej' : 'pend');
+            el.innerHTML = rej
+                ? `<b>Your last profile changes were not approved.</b><span>${profPending.rejectReason ? 'Reason: ' + escHtml(profPending.rejectReason) + '. ' : ''}Update the details below and submit again. Your approved profile is still showing on the store.</span>`
+                : '<b>Your profile changes are under review.</b><span>Your current approved profile stays visible on the store until our team approves the changes. You will get a notification.</span>';
+        }
 
         function profValues() { const v = {}; PROF_FIELDS.forEach(k => { v[k] = ($(PROF_IDS[k]).value || '').trim(); }); return v; }
         function profDirty() { const v = profValues(); return PROF_FIELDS.some(k => v[k] !== (profSaved[k] || '')) || !!profFiles.logo || !!profFiles.cover; }
@@ -1845,13 +1875,17 @@
             const uid = currentUser.uid;
             Promise.all([
                 db.ref('users/' + uid).once('value').catch(() => null), db.ref('developers/' + uid).once('value').catch(() => null),
-                db.ref('devprofiles/' + uid).once('value').catch(() => null), db.ref('apps').once('value').catch(() => null)
-            ]).then(([us, ds, ps, as]) => {
-                const u = (us && us.val()) || {}, d = (ds && ds.val()) || {}, pub = (ps && ps.val()) || {};
+                db.ref('devprofiles/' + uid).once('value').catch(() => null), db.ref('apps').once('value').catch(() => null),
+                db.ref('devprofilePending/' + uid).once('value').catch(() => null)
+            ]).then(([us, ds, ps, as, pn]) => {
+                const u = (us && us.val()) || {}, d = (ds && ds.val()) || {}, liveP = (ps && ps.val()) || {}, pend = (pn && pn.val()) || null;
+                // while a change is waiting (or was rejected) the form shows what the developer submitted; the public page keeps showing the approved profile
+                const pub = pend ? Object.assign({}, liveP, pend) : liveP;
+                profPending = pend; showProfReview();
                 profUser = u.username || window._devUsername || pub.username || '';
                 $('profUsername').value = profUser ? '@' + profUser : '';
                 $('orgUser').textContent = profUser ? '@' + profUser : '';
-                profVerified = pub.verified === true; profCreated = +pub.createdAt || 0;
+                profVerified = liveP.verified === true; profCreated = +pub.createdAt || 0;
                 profSaved = {
                     name: pub.name || d.displayName || u.name || currentUser.displayName || '', tagline: pub.tagline || '', type: pub.type || '',
                     about: pub.about || d.bio || u.bio || '', location: pub.location || d.country || '', founded: pub.founded || '',
@@ -1894,32 +1928,27 @@
             if (v.founded && !/^(19|20)\d{2}$/.test(v.founded)) return err('Year started must be a 4-digit year, for example 2024.');
             v.website = profUrl(v.website); v.discord = profUrl(v.discord);
             if (v.website && !/^https?:\/\/\S+\.\S+/.test(v.website)) return err('Enter a valid website address.');
-            const btn = $('orgSaveBtn'); btn.disabled = true; btn.textContent = 'Saving…';
+            const btn = $('orgSaveBtn'); btn.disabled = true; btn.textContent = 'Submitting…';
             const up1 = f => f ? uploadToImgBB(f) : Promise.resolve(null);
             Promise.all([up1(profFiles.logo), up1(profFiles.cover)]).then(([logo, cover]) => {
                 if ((logo && !/^https?:\/\//i.test(logo)) || (cover && !/^https?:\/\//i.test(cover))) throw new Error('Image upload failed. Check your internet and try again.');
-                const now = Date.now(), up = {}, pub = `devprofiles/${uid}/`, nv = x => (x === '' ? null : x);
-                PROF_FIELDS.forEach(k => { up[pub + k] = nv(k === 'name' ? v.name.slice(0, 60) : v[k]); });
-                up[pub + 'tagline'] = nv(v.tagline.slice(0, 90)); up[pub + 'about'] = nv(v.about.slice(0, 1500));
-                up[pub + 'username'] = profUser; up[pub + 'updatedAt'] = now; up[pub + 'createdAt'] = profCreated || now;
+                const now = Date.now(), nv = x => (x === '' ? null : x);
+                const rec = { status: 'pending', submittedAt: now, username: profUser, createdAt: profCreated || now, updatedAt: now };
+                PROF_FIELDS.forEach(k => { rec[k] = nv(k === 'name' ? v.name.slice(0, 60) : v[k]); });
+                rec.tagline = nv(v.tagline.slice(0, 90)); rec.about = nv(v.about.slice(0, 1500));
                 const newLogo = logo || profLogoUrl, newCover = cover || profCoverUrl;
-                up[pub + 'logo'] = nv(newLogo); up[pub + 'cover'] = nv(newCover);
-                // private copy + the account used on the store
-                up[`developers/${uid}/displayName`] = v.name; up[`developers/${uid}/bio`] = v.about.slice(0, 1500); up[`developers/${uid}/website`] = v.website; up[`developers/${uid}/github`] = v.github;
-                up[`developers/${uid}/supportEmail`] = v.email; up[`developers/${uid}/country`] = v.location; up[`developers/${uid}/updatedAt`] = now;
-                if (newLogo) up[`developers/${uid}/photoURL`] = newLogo;
-                up[`users/${uid}/name`] = v.name.slice(0, 40); up[`users/${uid}/bio`] = (v.tagline || v.about).slice(0, 140);
-                // the developer name printed on each of the apps follows the profile name
-                (window._profApps || []).forEach(a => { if (a.developerName !== v.name) up[`apps/${a.id}/developerName`] = v.name; });
-                return db.ref().update(up).then(() => ({ newLogo, newCover }));
-            }).then(({ newLogo, newCover }) => {
-                profSaved = { ...v }; profLogoUrl = newLogo || ''; profCoverUrl = newCover || ''; profFiles = { logo: null, cover: null }; profCreated = profCreated || Date.now();
-                (window._profApps || []).forEach(a => { a.developerName = v.name; });
-                try { currentUser.updateProfile({ displayName: v.name }); } catch (e) {}
-                addNotification('Profile updated successfully!'); profFill();
-                btn.disabled = false; btn.textContent = 'Save changes';
-                alert('Profile saved. It will appear on the store after the next store update.');
-            }).catch(x => { btn.disabled = false; btn.textContent = 'Save changes'; alert((x && x.message ? x.message : 'Could not save.') + (/permission/i.test((x && x.message) || '') ? '\nPublish the latest Firebase rules (devprofiles).' : '')); });
+                rec.logo = nv(newLogo); rec.cover = nv(newCover);
+                Object.keys(rec).forEach(k => { if (rec[k] === null) delete rec[k]; });
+                // nothing goes live here: the change waits in a review queue until an admin approves it
+                return db.ref('devprofilePending/' + uid).set(rec).then(() => ({ newLogo, newCover, rec }));
+            }).then(({ newLogo, newCover, rec }) => {
+                profSaved = { ...v }; profLogoUrl = newLogo || ''; profCoverUrl = newCover || ''; profFiles = { logo: null, cover: null };
+                profPending = rec; showProfReview();
+                addNotification('Profile changes submitted for review. Your current profile stays live until they are approved.');
+                profFill();
+                btn.disabled = false; btn.textContent = 'Submit for review';
+                alert('Your profile changes were submitted for review.\n\nThe profile shown on the store will not change until our team approves it. You will get a notification with the decision.');
+            }).catch(x => { btn.disabled = false; btn.textContent = 'Submit for review'; alert((x && x.message ? x.message : 'Could not submit.') + (/permission/i.test((x && x.message) || '') ? '\nPublish the latest Firebase rules and try again.' : '')); });
         }
 
         // ============================================

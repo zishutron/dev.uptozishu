@@ -1648,3 +1648,13 @@
 #tkSent{align-items:center;justify-content:center}
 #tkSent .tk-sent{border-radius:22px;width:calc(100% - 32px);margin:0 16px;height:auto;max-height:none}
 .tk-sent-mail b{word-break:normal;overflow-wrap:anywhere}
+
+/* review states */
+.app-list-item .app-status.pend,.pill.pend{background:rgba(59,130,246,.16);color:var(--primary-light)}
+.app-list-item .app-status.rej,.pill.rej{background:rgba(239,68,68,.15);color:var(--red)}
+.app-reject{flex-basis:100%;width:100%;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);border-radius:10px;padding:9px 12px;font-size:12.5px;line-height:1.5;color:var(--text-light);margin-top:8px}
+.app-reject small{color:var(--text-gray)}
+.org-review{display:flex;flex-direction:column;gap:3px;border-radius:14px;padding:13px 16px;margin-bottom:14px;font-size:13.5px;line-height:1.5}
+.org-review span{color:var(--text-gray)}
+.org-review.pend{background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.3)}
+.org-review.rej{background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.3)}
