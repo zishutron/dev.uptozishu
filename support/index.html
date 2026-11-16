@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <link rel="icon" type="image/png" href="/favicon.png">
+    <link rel="apple-touch-icon" href="/favicon.png">
+    <meta name="theme-color" content="#2563eb">
+    <title>Support — UptoZishu Console</title>
+    <meta name="robots" content="noindex,nofollow">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="/assets/console.css?v=20261116a">
+<script>(function(){try{var t=localStorage.getItem('zt_console_theme');var l=t?t==='light':!matchMedia('(prefers-color-scheme: dark)').matches;if(l){var r=document.documentElement.style;r.setProperty('--bg-dark','#f1f5f9');r.setProperty('--bg-card','#ffffff');r.setProperty('--bg-input','#e2e8f0');r.setProperty('--text-light','#0f172a');r.setProperty('--text-gray','#475569');r.setProperty('--border-color','#cbd5e1');}}catch(e){}})();</script>
+    <script>try{if(!localStorage.getItem('stardust_uid'))location.replace('/auth/?next='+encodeURIComponent(location.pathname+location.search));}catch(e){}</script>
+</head>
+<body data-page="support">
+
+    <!-- LOADING -->
+    <div class="loading-overlay show" id="loadingOverlay" role="status" aria-label="Loading">
+        <div class="zt-brand" aria-hidden="true"><span style="--i:0">U</span><span style="--i:1">p</span><span style="--i:2">t</span><span style="--i:3">o</span><span style="--i:4">Z</span><span style="--i:5">i</span><span style="--i:6">s</span><span style="--i:7">h</span><span style="--i:8">u</span></div>
+        <div id="loadingText" class="zt-caption"></div>
+    </div>
+
+
+    <!-- MAIN APP -->
+    <div class="app-container" id="appContainer">
+
+        <aside class="sidebar" id="sidebar">
+            <div class="brand">
+                <img class="brand-logo" src="/favicon.png" alt="UptoZishu" width="36" height="36">
+                <h2>UptoZishu</h2>
+                <span>Developer Console</span>
+            </div>
+
+            <a class="nav-item" data-page="dashboard" href="/">
+                <svg viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
+                <span>Dashboard</span>
+            </a>
+            <a class="nav-item" data-page="myapps" href="/apps/">
+                <svg viewBox="0 0 24 24"><path d="M4 6h16v2H4V6zm0 5h16v2H4v-2zm0 5h10v2H4v-2z"/></svg>
+                <span>My Apps</span>
+                <span class="badge" id="appCountBadge">0</span>
+            </a>
+            <a class="nav-item" data-page="upload" href="/upload/">
+                <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+                <span>Upload App</span>
+            </a>
+            <a class="nav-item" data-page="analytics" href="/analytics/">
+                <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg>
+                <span>Analytics</span>
+            </a>
+            <a class="nav-item" data-page="reviews" href="/reviews/">
+                <svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                <span>Reviews</span>
+                <span class="badge red" id="reviewBadge" style="display:none">0</span>
+            </a>
+            <a class="nav-item" data-page="notifications" href="/notifications/">
+                <svg viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2zm-2 1H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z"/></svg>
+                <span>Notifications</span>
+                <span class="badge red" id="notifBadge" style="display:none">0</span>
+            </a>
+            <a class="nav-item active" data-page="support" href="/support/">
+                <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM7 9h10v2H7V9zm6 5H7v-2h6v2zm4-6H7V6h10v2z"/></svg>
+                <span>Support</span>
+                <span class="badge red" id="ticketBadge" style="display:none">0</span>
+            </a>
+            <a class="nav-item" data-page="profile" href="/profile/">
+                <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>
+                <span>Profile</span>
+            </a>
+            <a class="nav-item" data-page="settings" href="/settings/">
+                <svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+                <span>Settings</span>
+            </a>
+
+        </aside>
+
+        <main class="main-content">
+
+            <!-- TOP HEADER -->
+            <div class="top-header">
+                <div class="page-title" id="pageTitle">Support</div>
+                <div class="user-info">
+                    <div>
+                        <div class="name" id="userDisplayName">Developer</div>
+                        <div class="email" id="userDisplayEmail">user@email.com</div>
+                    </div>
+                    <div class="avatar" id="userAvatar">D</div>
+                </div>
+            </div>
+
+            <div class="page-section active" id="section-support">
+<div class="st-wrap">
+  <div class="sp-head">
+    <div><h3>Support tickets</h3><p>Stuck or have a question? Open a ticket. Our team replies here and you get a notification.</p></div>
+    <button type="button" class="btn-primary sp-new" onclick="openTicketForm()">+ New ticket</button>
+  </div>
+  <div class="sp-tabs" id="spTabs"></div>
+  <div id="ticketList"></div>
+</div>
+</div>
+
+<div class="modal-overlay sheet-overlay" id="tkModal" onclick="if(event.target===this)closeTicketForm()">
+  <div class="sheet st-sheet" role="dialog" aria-modal="true" aria-labelledby="tkTitle">
+    <header class="sheet-head">
+      <div class="sheet-title"><h3 id="tkTitle">New support ticket</h3><p>Tell us what you need help with.</p></div>
+      <button type="button" class="sheet-x" onclick="closeTicketForm()" aria-label="Close">&#10005;</button>
+    </header>
+    <div class="sheet-body">
+      <div class="form-group"><label for="tkSubject">Subject</label><input type="text" id="tkSubject" maxlength="100" placeholder="e.g. My app update is not showing"></div>
+      <div class="tk-two">
+        <div class="form-group"><label for="tkCat">Topic</label><select id="tkCat"><option value="account">Account and login</option><option value="app">App upload or listing</option><option value="review">Reviews and ratings</option><option value="claim">Claim request</option><option value="bug">Bug or technical problem</option><option value="other">Something else</option></select></div>
+        <div class="form-group"><label for="tkPrio">Priority</label><select id="tkPrio"><option value="low">Low</option><option value="normal" selected>Normal</option><option value="high">High</option></select></div>
+      </div>
+      <div class="form-group"><label for="tkApp">Related app (optional)</label><select id="tkApp"></select></div>
+      <div class="form-group"><label for="tkMsg">Describe the issue</label><textarea id="tkMsg" maxlength="2000" rows="6" placeholder="What happened? What did you expect? Add any steps or error messages."></textarea><small class="st-hint" id="tkCount" style="text-align:right">0 / 2000</small></div>
+      <div class="error-msg" id="tkErr" style="display:none"></div>
+    </div>
+    <div class="sheet-foot"><button type="button" class="btn-ghost" onclick="closeTicketForm()">Cancel</button><button type="button" class="btn-primary" id="tkSend" onclick="submitTicket()">Send ticket</button></div>
+  </div>
+</div>
+<div class="st-toast" id="stToast" role="status"></div>
+<script>document.addEventListener('DOMContentLoaded',function(){var m=document.getElementById('tkMsg');m.addEventListener('input',function(){document.getElementById('tkCount').textContent=m.value.length+' / 2000'})})</script>
+</main>
+    </div>
+
+
+    <!-- FIREBASE -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <script src="/assets/console.js?v=20261116a"></script>
+</body>
+</html>
