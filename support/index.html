@@ -12,7 +12,7 @@
     <title>Support — UptoZishu Console</title>
     <meta name="robots" content="noindex,nofollow">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <link rel="stylesheet" href="/assets/console.css?v=20261116d">
+    <link rel="stylesheet" href="/assets/console.css?v=20261116f">
 <script>(function(){try{var t=localStorage.getItem('zt_console_theme');var l=t?t==='light':!matchMedia('(prefers-color-scheme: dark)').matches;if(l){var r=document.documentElement.style;r.setProperty('--bg-dark','#f1f5f9');r.setProperty('--bg-card','#ffffff');r.setProperty('--bg-input','#e2e8f0');r.setProperty('--text-light','#0f172a');r.setProperty('--text-gray','#475569');r.setProperty('--border-color','#cbd5e1');}}catch(e){}})();</script>
     <script>try{if(!localStorage.getItem('stardust_uid'))location.replace('/auth/?next='+encodeURIComponent(location.pathname+location.search));}catch(e){}</script>
 </head>
@@ -122,6 +122,15 @@
     <div class="sheet-foot"><button type="button" class="btn-ghost" onclick="closeTicketForm()">Cancel</button><button type="button" class="btn-primary" id="tkSend" onclick="submitTicket()">Send ticket</button></div>
   </div>
 </div>
+<div class="modal-overlay sheet-overlay" id="tkSent">
+  <div class="sheet st-sheet tk-sent" role="dialog" aria-modal="true" aria-labelledby="tkSentT">
+    <div class="tk-sent-ico"><svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="24" fill="none" stroke="currentColor" stroke-width="3"/><path d="M15 27l8 8 15-17" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+    <h3 id="tkSentT">Ticket sent</h3>
+    <p>Thanks! Our team will look into it and reply as soon as possible.</p>
+    <div class="tk-sent-mail"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg><span>Our reply will also be sent to <b id="tkSentMail"></b>. Please check your inbox, and your <b>Spam</b> folder too.</span></div>
+    <a class="btn-primary" id="tkSentGo" href="#">View my ticket</a>
+  </div>
+</div>
 <div class="st-toast" id="stToast" role="status"></div>
 <script>document.addEventListener('DOMContentLoaded',function(){var m=document.getElementById('tkMsg');m.addEventListener('input',function(){document.getElementById('tkCount').textContent=m.value.length+' / 2000'})})</script>
 </main>
@@ -132,6 +141,6 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
-    <script src="/assets/console.js?v=20261116d"></script>
+    <script src="/assets/console.js?v=20261116f"></script>
 </body>
 </html>
