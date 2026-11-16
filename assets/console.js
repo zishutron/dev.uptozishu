@@ -1925,6 +1925,15 @@
         // ============================================
         // SUPPORT TICKETS
         // ============================================
+        // Paste your Google Apps Script web-app URL here to enable ticket emails (see mail-script/README.txt)
+        const MAIL_ENDPOINT = '';
+        function sendTicketMail(type, ticketId) {
+            if (!MAIL_ENDPOINT || !currentUser) return Promise.resolve();
+            return currentUser.getIdToken().then(token => Promise.race([
+                fetch(MAIL_ENDPOINT, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ type, ticketId, token }) }),
+                new Promise(r => setTimeout(r, 3500))
+            ])).catch(() => {});
+        }
         const TK_STATUS = { open: ['Open', 'warn'], answered: ['Answered', 'ok'], closed: ['Closed', 'mute'] };
         const TK_CATS = { account: 'Account and login', app: 'App upload or listing', review: 'Reviews and ratings', claim: 'Claim request', bug: 'Bug or technical problem', other: 'Something else' };
         let userTickets = {}, tkFilter = 'all', tkId = null, tkData = null, tkRef = null;
@@ -1980,7 +1989,7 @@
             const up = {};
             up['tickets/' + id] = t;
             up['userTickets/' + uid + '/' + id] = { subject: t.subject, category: t.category, status: 'open', lastBy: 'dev', createdAt: now, updatedAt: now, unread: false };
-            db.ref().update(up).then(() => { addActivityLog('Opened support ticket'); location.href = '/support/ticket/?id=' + encodeURIComponent(id); })
+            db.ref().update(up).then(() => { addActivityLog('Opened support ticket'); return sendTicketMail('opened', id); }).then(() => { location.href = '/support/ticket/?id=' + encodeURIComponent(id); })
                 .catch(() => { btn.disabled = false; btn.textContent = 'Send ticket'; tkErr('Could not send the ticket. Check your connection and try again.'); });
         }
 
