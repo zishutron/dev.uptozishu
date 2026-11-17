@@ -381,7 +381,7 @@
         // ============================================
         // NAVIGATION
         // ============================================
-        const PAGE_URL = { dashboard: '/', myapps: '/apps/', upload: '/upload/', analytics: '/analytics/', reviews: '/reviews/', notifications: '/notifications/', profile: '/profile/', settings: '/settings/', support: '/support/' };
+        const PAGE_URL = { dashboard: '/', myapps: '/apps/', upload: '/upload/', analytics: '/analytics/', reviews: '/reviews/', notifications: '/notifications/', profile: '/profile/', settings: '/settings/', support: '/support/', feedback: '/feedback/', advertise: '/advertise/' };
         function switchPage(page) {
             if (page === currentPage) return;
             location.href = PAGE_URL[page] || '/';
@@ -400,6 +400,8 @@
             if (currentPage === 'settings') initSettings();
             if (currentPage === 'support') renderTicketList();
             if (currentPage === 'ticket') initTicketPage();
+            if (currentPage === 'feedback') initFeedbackPage();
+            if (currentPage === 'advertise') initAdPage();
         }
 
         // ============================================
@@ -449,10 +451,12 @@
                 // newest apps first (push ids are time-ordered, so they also order older apps that have no timestamp)
                 allApps.sort((x, y) => appCreated(y) - appCreated(x) || (x.id < y.id ? 1 : -1));
                 syncRatings();
+                syncFeedbackWatchers();
                 $('appCountBadge').textContent = allApps.length;
                 if (currentPage === 'dashboard') updateDashboard();
                 if (currentPage === 'myapps') renderMyApps();
                 if (currentPage === 'analytics') populateAnalyticsSelect();
+                if (currentPage === 'advertise') fillAdApps();
                 if (currentPage === 'reviews') { populateReviewSelect(); renderReviews(); }
                 if (currentPage === 'hiddenreviews') { populateReviewSelect(); renderHiddenReviews(); }
                 showLoading(false);
@@ -1107,6 +1111,161 @@
                 zdShow({ type: 'error', title: 'Your account is suspended', body: why + '\n\nYou can look around, but you cannot upload, update, review or send tickets. Contact support if you think this is a mistake.', ok: 'I understand' });
             }).catch(() => { });
         }
+
+        // ============================================
+        // FEEDBACK from store users about the developer's apps (read through appFeedback/<appId> -> feedback/<id>)
+        // ============================================
+        const fbData = {}, fbWatch = {}; let fbFilterApp = 'all', fbFilterType = 'all', fbSeenAtOpen = 0;
+        const FB_SEEN_KEY = 'zt_fb_seen';
+        function fbSeen() { try { return +localStorage.getItem(FB_SEEN_KEY) || 0; } catch (e) { return 0; } }
+        function fbMine() { const mine = new Set(allApps.map(a => a.id)); return Object.values(fbData).filter(f => mine.has(f.appId)).sort((a, b) => (b.ts || 0) - (a.ts || 0)); }
+        function fbAgo(t) { const s = Math.max(1, (Date.now() - t) / 1000); if (s < 60) return 'just now'; if (s < 3600) return Math.floor(s / 60) + ' min ago'; if (s < 86400) return Math.floor(s / 3600) + ' h ago'; if (s < 2592000) return Math.floor(s / 86400) + ' d ago'; return new Date(t).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); }
+        function syncFeedbackWatchers() {
+            allApps.forEach(a => {
+                if (fbWatch[a.id]) return; fbWatch[a.id] = true;
+                db.ref('appFeedback/' + a.id).on('value', snap => {
+                    const ids = Object.keys(snap.val() || {});
+                    Promise.all(ids.filter(id => !fbData[id]).map(id => db.ref('feedback/' + id).once('value').then(s => { const v = s.val(); if (v && v.appId === a.id) fbData[id] = Object.assign({ id }, v); }).catch(() => { })))
+                        .then(() => { Object.keys(fbData).forEach(id => { if (fbData[id].appId === a.id && !ids.includes(id)) delete fbData[id]; }); fbChanged(); });
+                }, () => { });
+            });
+        }
+        function fbChanged() {
+            const b = $('feedbackBadge'); if (b) { const seen = currentPage === 'feedback' ? Infinity : fbSeen(); setBadge(b, fbMine().filter(f => (f.ts || 0) > seen).length); }
+            if (currentPage === 'feedback') renderFeedback();
+        }
+        // ============================================
+        // APP ADVERTISEMENT (paid Sponsored / Featured placement)
+        // ============================================
+        const AD_PLANS = { sponsored: { name: 'Sponsored', price: 100 }, featured: { name: 'Featured', price: 150 } };
+        let adPlan = 'sponsored', adShotUrl = '', adUploading = false, adSending = false, adInit = false;
+        const adCamps = {}, adRefs = {};
+        const adMoney = n => '₹' + n.toLocaleString('en-IN');
+        const adDate = t => t ? new Date(+t).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+        function adSum() {
+            const m = +($('adMonths') || {}).value || 1, tot = AD_PLANS[adPlan].price * m;
+            $('adTotal').textContent = adMoney(tot); $('adAmt2').textContent = adMoney(tot);
+            $('adUpiLink').href = 'upi://pay?pa=7654613259@fam&pn=UptoZishu&cu=INR&am=' + tot + '&tn=' + encodeURIComponent('Ad ' + AD_PLANS[adPlan].name + ' ' + m + 'm');
+            adAppHint();
+        }
+        function adAppHint() {
+            const h = $('adAppHint'), id = $('adApp').value, a = allApps.find(x => x.id === id);
+            h.textContent = adPlan === 'featured' && a && !a.banner ? 'This app has no feature banner yet. Add one in My Apps before choosing Featured, otherwise the request may be rejected.' : '';
+        }
+        function renderAdList() {
+            const box = $('adList'); if (!box) return;
+            const list = Object.keys(adCamps).map(k => adCamps[k]).filter(Boolean).sort((a, b) => (b.submittedAt || 0) - (a.submittedAt || 0));
+            if (!list.length) { box.innerHTML = '<div class="sp-empty"><p style="padding:18px 8px">No advertisement requests yet.</p></div>'; return; }
+            box.innerHTML = list.map(c => {
+                const st = c.status === 'approved' && c.endsAt && c.endsAt < Date.now() ? 'expired' : (c.status || 'pending');
+                const lab = { pending: 'Under review', approved: 'Approved', rejected: 'Rejected', expired: 'Ended' }[st] || st;
+                const info = st === 'pending' ? 'Our team is verifying your payment and details. Your app goes live within 3–5 days after payment.'
+                    : st === 'approved' ? 'Live from ' + adDate(c.startsAt) + ' until ' + adDate(c.endsAt) + '. The store updates within about 10 minutes of each rebuild.'
+                    : st === 'rejected' ? 'Reason: ' + (c.rejectReason || 'Details or payment could not be verified.') + ' You can submit a new request with the correct details.'
+                    : 'This placement has ended. You can book it again anytime.';
+                return `<div class="ad-card ${st}"><div class="ad-card-h"><img src="${escHtml(c.appIcon || '/favicon.png')}" alt="" onerror="this.style.visibility='hidden'"><div><b>${escHtml(c.appName || 'App')}</b><small>${escHtml((AD_PLANS[c.plan] || {}).name || '')} · ${c.months} month${c.months > 1 ? 's' : ''} · ${adMoney(+c.amount || 0)}</small></div><span class="ad-st ${st}">${lab}</span></div><p>${escHtml(info)}</p><small class="ad-ref">Sent ${adDate(c.submittedAt)} · Ref #${escHtml(String(c.id || '').slice(-6).toUpperCase())}</small></div>`;
+            }).join('');
+        }
+        function adWatch() {
+            db.ref('userAds/' + currentUser.uid).on('value', s => {
+                const ids = Object.keys(s.val() || {});
+                Object.keys(adRefs).filter(k => !ids.includes(k)).forEach(k => { adRefs[k].off(); delete adRefs[k]; delete adCamps[k]; });
+                ids.filter(k => !adRefs[k]).forEach(k => {
+                    adRefs[k] = db.ref('adCampaigns/' + k);
+                    adRefs[k].on('value', x => { const v = x.val(); if (v) adCamps[k] = Object.assign({ id: k }, v); else delete adCamps[k]; renderAdList(); }, () => { });
+                });
+                renderAdList();
+            }, () => { });
+        }
+        function fillAdApps() {
+            const sel = $('adApp'); if (!sel) return;
+            const live = allApps.filter(isLiveApp), keep = sel.value;
+            sel.innerHTML = live.length ? live.map(a => `<option value="${escHtml(a.id)}">${escHtml(a.name || 'App')}</option>`).join('') : '<option value="">You have no live app yet</option>';
+            if (keep && live.some(a => a.id === keep)) sel.value = keep;
+            adAppHint();
+        }
+        function initAdPage() {
+            if (!adInit) {
+                adInit = true;
+                $('adPlans').addEventListener('click', e => { const b = e.target.closest('[data-plan]'); if (!b) return; adPlan = b.dataset.plan; Array.prototype.forEach.call($('adPlans').children, x => x.classList.toggle('on', x === b)); adSum(); });
+                $('adMonths').addEventListener('change', adSum); $('adApp').addEventListener('change', adAppHint);
+                document.querySelectorAll('.ad-copy').forEach(b => b.addEventListener('click', () => { const v = b.dataset.copy; const ok = () => { b.textContent = 'Copied'; setTimeout(() => b.textContent = 'Copy', 1500); }; try { navigator.clipboard.writeText(v).then(ok, ok); } catch (e) { ok(); } }));
+                $('adShot').addEventListener('change', () => {
+                    const f = $('adShot').files[0]; if (!f) return;
+                    if (!/^image\//.test(f.type)) { $('adErr').textContent = 'Please choose an image file.'; return; }
+                    adUploading = true; adShotUrl = ''; $('adErr').textContent = ''; $('adShotTxt').textContent = 'Uploading…'; $('adShotImg').hidden = true;
+                    uploadToImgBB(f).then(u => {
+                        if (!/^https?:\/\//i.test(u)) throw new Error('upload');
+                        adShotUrl = u; $('adShotImg').src = u; $('adShotImg').hidden = false; $('adShotTxt').textContent = 'Screenshot uploaded. Tap to change';
+                    }).catch(() => { $('adShotTxt').textContent = 'Upload failed. Tap to try again'; $('adErr').textContent = 'The screenshot could not be uploaded. Check your internet and try again.'; })
+                        .then(() => { adUploading = false; });
+                });
+                $('adForm').addEventListener('submit', adSubmit);
+                $('adEmail').value = (currentUser && currentUser.email) || '';
+                $('adPaidOn').value = new Date().toISOString().slice(0, 10);
+                adWatch();
+            }
+            fillAdApps(); adSum(); renderAdList();
+        }
+        function adSubmit(e) {
+            e.preventDefault(); if (adSending) return;
+            const err = $('adErr'), v = id => ($(id).value || '').trim(), app = allApps.find(a => a.id === $('adApp').value);
+            const fail = m => { err.textContent = m; };
+            err.textContent = '';
+            if (!app || !isLiveApp(app)) return fail('Please choose one of your live apps.');
+            if (v('adName').length < 3) return fail('Enter the full name of the person who paid.');
+            if (!/^[0-9+\s-]{10,16}$/.test(v('adPhone'))) return fail('Enter a valid phone number.');
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v('adEmail'))) return fail('Enter a valid contact email.');
+            if (!/^[A-Za-z0-9]{8,30}$/.test(v('adUtr'))) return fail('Enter the UTR / transaction ID exactly as shown in your payment app (letters and numbers only).');
+            if (!v('adPaidOn')) return fail('Choose the payment date.');
+            if (adUploading) return fail('Please wait, the screenshot is still uploading.');
+            if (!adShotUrl) return fail('Upload the payment screenshot. It is required.');
+            if (!$('adAgree').checked) return fail('Please tick the confirmation box.');
+            const dup = Object.values(adCamps).some(c => c.appId === app.id && c.plan === adPlan && c.status === 'pending');
+            if (dup) return fail('You already have a pending ' + AD_PLANS[adPlan].name + ' request for this app. Please wait for the decision.');
+            const months = +$('adMonths').value || 1, amount = AD_PLANS[adPlan].price * months, id = db.ref('adCampaigns').push().key, now = Date.now();
+            const rec = { uid: currentUser.uid, appId: app.id, appName: String(app.name || '').slice(0, 100), appIcon: /^https?:\/\//i.test(app.icon || '') ? String(app.icon).slice(0, 500) : '', plan: adPlan, months: months, amount: amount, name: v('adName'), phone: v('adPhone'), email: v('adEmail'), utr: v('adUtr').toUpperCase(), paidOn: v('adPaidOn'), shot: adShotUrl, note: v('adNote'), status: 'pending', submittedAt: now };
+            const up = {}; up['adCampaigns/' + id] = rec; up['userAds/' + currentUser.uid + '/' + id] = true;
+            adSending = true; const btn = $('adGo'); btn.disabled = true; btn.textContent = 'Submitting…';
+            db.ref().update(up).then(() => {
+                addNotification('Your ' + AD_PLANS[adPlan].name + ' advertisement request for "' + rec.appName + '" (' + adMoney(amount) + ') was received. Our team will verify the payment. If everything is correct your app goes live within 3–5 days.');
+                zdShow({ type: 'success', title: 'Request submitted', body: 'We received your request and payment details for "' + rec.appName + '". Our team will check everything. If all is correct your app goes live in the ' + AD_PLANS[adPlan].name + ' list within 3–5 days. If something is wrong we reject it and tell you why.', steps: ['Submitted', 'Team verifies payment and details', 'Decision by notification and email', 'Live within 3–5 days'], ok: 'Done' });
+                $('adForm').reset(); adShotUrl = ''; $('adShotImg').hidden = true; $('adShotTxt').textContent = 'Tap to choose the screenshot'; $('adEmail').value = currentUser.email || ''; $('adPaidOn').value = new Date().toISOString().slice(0, 10); adSum();
+            }).catch(x => { err.textContent = 'Could not send the request. ' + ((x && x.code === 'PERMISSION_DENIED') ? 'Please check that your account is active and try again.' : 'Check your internet and try again.'); })
+                .then(() => { adSending = false; btn.disabled = false; btn.textContent = 'Submit advertisement request'; });
+        }
+
+        function initFeedbackPage() { fbSeenAtOpen = fbSeen(); try { localStorage.setItem(FB_SEEN_KEY, String(Date.now())); } catch (e) { } renderFeedback(); fbChanged(); }
+        function setFbkApp(v) { fbFilterApp = v; renderFeedback(); }
+        function setFbkType(v) { fbFilterType = v; renderFeedback(); }
+        function renderFeedback() {
+            const box = $('fbkList'); if (!box || currentPage !== 'feedback') return;
+            const all = fbMine(), sel = $('fbkApp');
+            const opts = '<option value="all">All apps</option>' + allApps.map(a => `<option value="${escHtml(a.id)}"${fbFilterApp === a.id ? ' selected' : ''}>${escHtml(a.name || 'App')}</option>`).join('');
+            if (sel && sel.innerHTML !== opts) sel.innerHTML = opts;
+            let list = fbFilterApp === 'all' ? all : all.filter(f => f.appId === fbFilterApp);
+            const types = [...new Set(list.map(f => f.type).filter(Boolean))];
+            if (fbFilterType !== 'all' && !types.includes(fbFilterType)) fbFilterType = 'all';
+            const avg = list.length ? list.reduce((s, f) => s + (+f.rating || 0), 0) / list.length : 0;
+            $('fbkStats').innerHTML = `<div><b>${list.length}</b><span>Feedback</span></div><div><b>${list.length ? avg.toFixed(1) : '–'}<em>★</em></b><span>Average</span></div><div><b>${list.filter(f => f.type === 'Bug or problem').length}</b><span>Bugs</span></div><div><b>${list.filter(f => (f.ts || 0) > fbSeenAtOpen).length}</b><span>New</span></div>`;
+            $('fbkTabs').innerHTML = ['all'].concat(types).map(t => `<button type="button" class="${fbFilterType === t ? 'on' : ''}" onclick="setFbkType(this.dataset.t)" data-t="${escHtml(t)}">${t === 'all' ? 'All' : escHtml(t)}<i>${t === 'all' ? list.length : list.filter(f => f.type === t).length}</i></button>`).join('');
+            if (fbFilterType !== 'all') list = list.filter(f => f.type === fbFilterType);
+            if (!list.length) {
+                box.innerHTML = `<div class="sp-empty"><div class="sp-empty-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.6A8 8 0 1 1 21 12z"/></svg></div><h4>${all.length ? 'Nothing here' : 'No feedback yet'}</h4><p>${all.length ? 'Try another app or type.' : 'When someone sends feedback from the Feedback section of your app page, it shows up here.'}</p></div>`;
+                return;
+            }
+            const toneOf = { 'Bug or problem': 'bad', Suggestion: 'info', Compliment: 'ok', Question: 'warn' };
+            box.innerHTML = list.map(f => {
+                const app = allApps.find(a => a.id === f.appId) || {}, r = Math.max(0, Math.min(5, Math.round(+f.rating || 0)));
+                const imgs = (Array.isArray(f.images) ? f.images : []).filter(u => /^https?:\/\//i.test(u));
+                return `<div class="fbk-card${(f.ts || 0) > fbSeenAtOpen ? ' new' : ''}"><div class="fbk-top"><img src="${escHtml(app.icon || '/favicon.png')}" alt="" onerror="this.style.visibility='hidden'"><div><b>${escHtml(f.appName || app.name || 'App')}</b><small><span class="fbk-st">${'★'.repeat(r)}<i>${'★'.repeat(5 - r)}</i></span> · ${f.username ? '@' + escHtml(f.username) : 'A user'} · ${fbAgo(f.ts)}</small></div><span class="fbk-tag ${toneOf[f.type] || ''}">${escHtml(f.type || 'Feedback')}</span></div>
+                ${(f.topics || []).length ? `<div class="fbk-topics">${f.topics.map(t => `<span>${escHtml(t)}</span>`).join('')}</div>` : ''}
+                <p class="fbk-msg">${escHtml(f.message || '').replace(/\n/g, '<br>')}</p>
+                ${f.device || f.appVersion ? `<div class="fbk-meta">${escHtml([f.device, f.appVersion ? 'App ' + f.appVersion : ''].filter(Boolean).join(' · '))}</div>` : ''}
+                ${imgs.length ? `<div class="fbk-shots">${imgs.map(u => `<a href="${escHtml(u)}" target="_blank" rel="noopener"><img src="${escHtml(u)}" alt="Screenshot" loading="lazy"></a>`).join('')}</div>` : ''}</div>`;
+            }).join('');
+        }
+
         // updates to live apps wait for admin approval in appUpdates/<uid>/<appId>
         let myUpdates = {};
         const isLiveApp = a => !!a && !['draft', 'pending', 'rejected', 'suspended'].includes(a.status);
