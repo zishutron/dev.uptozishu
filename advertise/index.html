@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <link rel="icon" type="image/png" href="/favicon.png">
+    <link rel="apple-touch-icon" href="/favicon.png">
+    <meta name="theme-color" content="#2563eb">
+    <title>App Advertisement — UptoZishu Console</title>
+    <meta name="robots" content="noindex,nofollow">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="/assets/console.css?v=20261117e">
+<script>(function(){try{var t=localStorage.getItem('zt_console_theme');var l=t?t==='light':!matchMedia('(prefers-color-scheme: dark)').matches;if(l){var r=document.documentElement.style;r.setProperty('--bg-dark','#f1f5f9');r.setProperty('--bg-card','#ffffff');r.setProperty('--bg-input','#e2e8f0');r.setProperty('--text-light','#0f172a');r.setProperty('--text-gray','#475569');r.setProperty('--border-color','#cbd5e1');}}catch(e){}})();</script>
+    <script>try{if(!localStorage.getItem('stardust_uid'))location.replace('/auth/?next='+encodeURIComponent(location.pathname+location.search));}catch(e){}</script>
+</head>
+<body data-page="advertise">
+
+    <!-- LOADING -->
+    <div class="loading-overlay show" id="loadingOverlay" role="status" aria-label="Loading">
+        <div class="zt-brand" aria-hidden="true"><span style="--i:0">U</span><span style="--i:1">p</span><span style="--i:2">t</span><span style="--i:3">o</span><span style="--i:4">Z</span><span style="--i:5">i</span><span style="--i:6">s</span><span style="--i:7">h</span><span style="--i:8">u</span></div>
+        <div id="loadingText" class="zt-caption"></div>
+    </div>
+
+
+    <!-- MAIN APP -->
+    <div class="app-container" id="appContainer">
+
+        <aside class="sidebar" id="sidebar">
+            <div class="brand">
+                <img class="brand-logo" src="/favicon.png" alt="UptoZishu" width="36" height="36">
+                <h2>UptoZishu</h2>
+                <span>Developer Console</span>
+            </div>
+
+            <a class="nav-item" data-page="dashboard" href="/">
+                <svg viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
+                <span>Dashboard</span>
+            </a>
+            <a class="nav-item" data-page="myapps" href="/apps/">
+                <svg viewBox="0 0 24 24"><path d="M4 6h16v2H4V6zm0 5h16v2H4v-2zm0 5h10v2H4v-2z"/></svg>
+                <span>My Apps</span>
+                <span class="badge" id="appCountBadge">0</span>
+            </a>
+            <a class="nav-item" data-page="upload" href="/upload/">
+                <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+                <span>Upload App</span>
+            </a>
+            <a class="nav-item" data-page="analytics" href="/analytics/">
+                <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg>
+                <span>Analytics</span>
+            </a>
+            <a class="nav-item" data-page="reviews" href="/reviews/">
+                <svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                <span>Reviews</span>
+                <span class="badge red" id="reviewBadge" style="display:none">0</span>
+            </a>
+            <a class="nav-item" data-page="feedback" href="/feedback/">
+                <svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.6A8 8 0 1 1 21 12z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <span>Feedback</span>
+                <span class="badge red" id="feedbackBadge" style="display:none">0</span>
+            </a>
+            <a class="nav-item active" data-page="advertise" href="/advertise/">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11v2a1 1 0 0 0 1 1h3l5 4V6L7 10H4a1 1 0 0 0-1 1z"/><path d="M16 9a4 4 0 0 1 0 6"/><path d="M19 6.5a8 8 0 0 1 0 11"/></svg>
+                <span>App Advertisement</span>
+                <span class="badge red" id="adBadge" style="display:none">0</span>
+            </a>
+            <a class="nav-item" data-page="notifications" href="/notifications/">
+                <svg viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2zm-2 1H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z"/></svg>
+                <span>Notifications</span>
+                <span class="badge red" id="notifBadge" style="display:none">0</span>
+            </a>
+            <a class="nav-item" data-page="support" href="/support/">
+                <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM7 9h10v2H7V9zm6 5H7v-2h6v2zm4-6H7V6h10v2z"/></svg>
+                <span>Support</span>
+                <span class="badge red" id="ticketBadge" style="display:none">0</span>
+            </a>
+            <a class="nav-item" data-page="profile" href="/profile/">
+                <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>
+                <span>Profile</span>
+            </a>
+            <a class="nav-item" data-page="settings" href="/settings/">
+                <svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+                <span>Settings</span>
+            </a>
+
+        </aside>
+
+        <main class="main-content">
+
+            <!-- TOP HEADER -->
+            <div class="top-header">
+                <div class="page-title" id="pageTitle">App Advertisement</div>
+                <div class="user-info">
+                    <div>
+                        <div class="name" id="userDisplayName">Developer</div>
+                        <div class="email" id="userDisplayEmail">user@email.com</div>
+                    </div>
+                    <div class="avatar" id="userAvatar">D</div>
+                </div>
+            </div>
+
+            <div class="page-section active" id="section-advertise">
+<div class="st-wrap ad-wrap">
+  <div class="sp-head"><div><h3>App Advertisement</h3><p>Get your app in front of more people. Pick a plan, fill in the form, pay by UPI and send us the proof. We take care of the rest.</p></div></div>
+
+  <div class="ad-plans" id="adPlans">
+    <button type="button" class="ad-plan on" data-plan="sponsored"><span class="ad-tag">Sponsored</span><b>₹100<small>/ month</small></b><p>Your app appears in the <b>Sponsored</b> row at the very top of the store home page and on the search screen.</p></button>
+    <button type="button" class="ad-plan" data-plan="featured"><span class="ad-tag f">Featured</span><b>₹150<small>/ month</small></b><p>Your app gets a big banner slide in the <b>Featured</b> list at the top of the store home page. Needs a feature banner on your app.</p></button>
+  </div>
+
+  <div class="ad-how">
+    <h4>How it works</h4>
+    <ol>
+      <li><b>Fill the form</b> below with your app and contact details.</li>
+      <li><b>Pay by UPI</b> using the QR code or UPI ID shown here.</li>
+      <li><b>Upload the payment screenshot</b> and enter the UTR / transaction ID, then submit.</li>
+      <li><b>Our team verifies everything.</b> If all details and the payment are correct, your app is added to the category. If anything is wrong or missing, the request is rejected and you are told the reason.</li>
+      <li><b>Your app goes live within 3–5 days</b> after payment.</li>
+    </ol>
+  </div>
+
+  <form id="adForm" class="ad-form" novalidate>
+    <div class="form-group"><label for="adApp">Your app</label><select id="adApp"></select><small id="adAppHint"></small></div>
+    <div class="ad-row">
+      <div class="form-group"><label for="adMonths">How many months</label><select id="adMonths"><option value="1">1 month</option><option value="2">2 months</option><option value="3">3 months</option><option value="6">6 months</option><option value="12">12 months</option></select></div>
+      <div class="ad-total"><span>Total to pay</span><b id="adTotal">₹100</b></div>
+    </div>
+
+    <div class="ad-pay">
+      <h4>Pay by UPI</h4>
+      <div class="ad-pay-in">
+        <img src="/assets/upi-qr.jpg" alt="UPI QR code for payment" width="170" height="213">
+        <div>
+          <div class="ad-kv"><span>UPI ID</span><b id="adUpi">7654613259@fam</b><button type="button" class="ad-copy" data-copy="7654613259@fam">Copy</button></div>
+          <div class="ad-kv"><span>Amount</span><b id="adAmt2">₹100</b></div>
+          <div class="ad-kv"><span>Support</span><b>support.stardustofficial@gmail.com</b></div>
+          <a class="btn-ad-upi" id="adUpiLink" href="#">Open UPI app</a>
+          <p class="ad-note">Pay the exact total. Keep the payment screenshot, you need it below.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="ad-row">
+      <div class="form-group"><label for="adName">Full name</label><input id="adName" type="text" maxlength="80" autocomplete="name" placeholder="Name of the person who paid"></div>
+      <div class="form-group"><label for="adPhone">Phone number</label><input id="adPhone" type="tel" maxlength="20" autocomplete="tel" placeholder="10 digit mobile number"></div>
+    </div>
+    <div class="form-group"><label for="adEmail">Contact email</label><input id="adEmail" type="email" maxlength="120" autocomplete="email" placeholder="you@example.com"></div>
+    <div class="ad-row">
+      <div class="form-group"><label for="adUtr">UTR / transaction ID</label><input id="adUtr" type="text" maxlength="40" autocomplete="off" placeholder="12 digit UTR number"></div>
+      <div class="form-group"><label for="adPaidOn">Payment date</label><input id="adPaidOn" type="date"></div>
+    </div>
+    <div class="form-group"><label>Payment screenshot <em>(required)</em></label>
+      <label class="ad-shot" id="adShotBox"><input id="adShot" type="file" accept="image/*" hidden><span id="adShotTxt">Tap to choose the screenshot</span><img id="adShotImg" alt="" hidden></label>
+    </div>
+    <div class="form-group"><label for="adNote">Anything we should know <em>(optional)</em></label><textarea id="adNote" rows="3" maxlength="400" placeholder="Preferred start date, or any message for the team"></textarea></div>
+    <label class="ad-check"><input id="adAgree" type="checkbox"><span>I confirm the details and the payment are correct. I understand the team verifies everything, the request is rejected if anything is wrong, and the app goes live within 3–5 days after payment. Payments are non-refundable once the app is live.</span></label>
+    <div class="ad-err" id="adErr" role="alert"></div>
+    <button class="btn-ad-go" id="adGo" type="submit">Submit advertisement request</button>
+  </form>
+
+  <div class="sp-head" style="margin-top:30px"><div><h3 style="font-size:17px">Your requests</h3></div></div>
+  <div id="adList"></div>
+</div>
+</div>
+</main>
+    </div>
+
+
+    <!-- FIREBASE -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <script src="/assets/console.js?v=20261117e"></script>
+</body>
+</html>
