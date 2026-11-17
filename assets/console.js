@@ -305,6 +305,7 @@
             loadNotifications();
             watchUserTickets();
             watchMyUpdates();
+            checkSuspended();
             initPage();
             localStorage.setItem('stardust_uid', user.uid);
             // accounts without a username (older developers) finish their profile first
@@ -1094,6 +1095,18 @@
         // ============================================
         // EDIT APP - Full, only file uploads (no URL fields for images)
         // ============================================
+        // admin can suspend an account (suspendedUsers/<uid>): writes are blocked by the database rules, this tells the developer why
+        function checkSuspended() {
+            if (!currentUser) return;
+            db.ref('suspendedUsers/' + currentUser.uid).once('value').then(sn => {
+                if (!sn.exists() || document.getElementById('suspBar')) return;
+                const v = sn.val() || {}, why = (v && v.reason) || 'Your account broke the store rules.';
+                const bar = document.createElement('div'); bar.id = 'suspBar';
+                bar.innerHTML = '<b>Account suspended</b><span>' + escHtml(why) + '</span><a href="mailto:support.stardustofficial@gmail.com?subject=Suspended%20account">Contact support</a>';
+                document.body.prepend(bar); document.body.classList.add('susp');
+                zdShow({ type: 'error', title: 'Your account is suspended', body: why + '\n\nYou can look around, but you cannot upload, update, review or send tickets. Contact support if you think this is a mistake.', ok: 'I understand' });
+            }).catch(() => { });
+        }
         // updates to live apps wait for admin approval in appUpdates/<uid>/<appId>
         let myUpdates = {};
         const isLiveApp = a => !!a && !['draft', 'pending', 'rejected', 'suspended'].includes(a.status);
@@ -1907,7 +1920,7 @@
             $('orgTypeTxt').textContent = PROF_TYPES[v.type] || '';
             $('orgTypeTxt').style.display = v.type ? '' : 'none';
             $('cntTag').textContent = v.tagline.length; $('cntAbout').textContent = v.about.length;
-            $('orgVerified').hidden = !profVerified;
+            { const ov = $('orgVerified'); ov.hidden = false; ov.classList.toggle('no', !profVerified); ov.lastChild.textContent = profVerified ? 'Verified' : 'Unverified'; ov.title = profVerified ? 'Verified by UptoZishu' : 'Not verified yet. Only the UptoZishu team can verify a developer.'; }
             $('orgSaveBar').hidden = !profDirty();
             // strength meter
             const links = !!(v.website || v.github); // X, Instagram, YouTube, LinkedIn, Telegram and Discord are optional and do not count
