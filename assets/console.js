@@ -62,6 +62,54 @@
             set: () => true, apply: () => NULL_EL
         });
         const $ = id => document.getElementById(id) || NULL_EL;
+
+        // ============================================
+        // POPUPS (styled replacements for alert / confirm)
+        // ============================================
+        const ZD_ICO = {
+            success: '<path d="M5 12.5l4.5 4.5L19 7.5"/>', error: '<path d="M7 7l10 10M17 7L7 17"/>', warn: '<path d="M12 7.5v6M12 17v.01"/>',
+            info: '<path d="M12 11v6M12 7.5v.01"/>', danger: '<path d="M4.5 7.5h15M9.5 7.5v-3h5v3M6.5 7.5l.8 12h9.4l.8-12M10 11v5M14 11v5"/>'
+        };
+        let zdOpenCount = 0;
+        function zdShow(o) {
+            return new Promise(res => {
+                const type = o.type || 'info', ov = document.createElement('div');
+                ov.className = 'zd-ov'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-modal', 'true');
+                const steps = (o.steps || []).map((t, i) => `<li class="${i === 0 ? 'on' : ''}"><i>${i === 0 ? '<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>' : i + 1}</i><span>${escHtml(t)}</span></li>`).join('');
+                ov.innerHTML = `<div class="zd-card zd-${type}"><div class="zd-ic"><svg viewBox="0 0 24 24">${ZD_ICO[type] || ZD_ICO.info}</svg></div><h3>${escHtml(o.title || '')}</h3>${o.body ? `<p>${escHtml(o.body).replace(/\n/g, '<br>')}</p>` : ''}${steps ? `<ol class="zd-steps">${steps}</ol>` : ''}<div class="zd-act">${o.cancel ? `<button type="button" class="zd-b ghost" data-v="0">${escHtml(o.cancel)}</button>` : ''}<button type="button" class="zd-b ${o.danger ? 'danger' : 'main'}" data-v="1">${escHtml(o.ok || 'OK')}</button></div></div>`;
+                document.body.appendChild(ov); zdOpenCount++; document.documentElement.classList.add('zd-lock');
+                requestAnimationFrame(() => ov.classList.add('show'));
+                const prevFocus = document.activeElement;
+                const done = v => { document.removeEventListener('keydown', key, true); ov.classList.remove('show'); setTimeout(() => { ov.remove(); if (--zdOpenCount <= 0) document.documentElement.classList.remove('zd-lock'); }, 180); try { prevFocus && prevFocus.focus && prevFocus.focus(); } catch (e) { } res(v); };
+                const key = e => { if (e.key === 'Escape') { e.stopPropagation(); done(!o.cancel); } };
+                document.addEventListener('keydown', key, true);
+                ov.addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (b) done(b.dataset.v === '1'); else if (e.target === ov && !o.sticky) done(!o.cancel); });
+                const main = ov.querySelector('.zd-b:not(.ghost)'); if (main) setTimeout(() => main.focus(), 60);
+            });
+        }
+        // alert replacement: the first paragraph becomes the title when the message has two paragraphs
+        function zdAlert(msg, o) {
+            o = o || {}; msg = String(msg == null ? '' : msg);
+            let title = o.title, body = msg;
+            if (!title) { const parts = msg.split('\n\n'); if (parts.length > 1) { title = parts.shift().replace(/[.:]$/, ''); body = parts.join('\n\n'); } else { title = ''; } }
+            let type = o.type;
+            if (!type) type = /could not|couldn.t|failed|error|denied|permission/i.test(msg) ? 'error' : /^(please|set a|choose|enter|add |select|write)|too large|must |valid|at least|required/i.test(msg) ? 'warn' : 'success';
+            if (!title) { title = body; body = ''; if (title.length > 70) { body = title; title = type === 'error' ? 'Something went wrong' : type === 'warn' ? 'Check this' : 'Done'; } }
+            return zdShow({ type, title, body, ok: o.ok || 'OK', steps: o.steps });
+        }
+        function zdConfirm(msg, o) {
+            o = o || {};
+            const parts = String(msg).split('\n\n'), first = parts.shift();
+            return zdShow({ type: o.danger ? 'danger' : (o.type || 'warn'), title: o.title || first, body: o.title ? msg : parts.join('\n\n'), ok: o.ok || 'Confirm', cancel: o.cancel || 'Cancel', danger: !!o.danger });
+        }
+        function zdToast(msg, type) {
+            let w = document.getElementById('zdToasts'); if (!w) { w = document.createElement('div'); w.id = 'zdToasts'; document.body.appendChild(w); }
+            const t = document.createElement('div'); t.className = 'zd-toast ' + (type || 'success');
+            t.innerHTML = `<svg viewBox="0 0 24 24">${ZD_ICO[type === 'error' ? 'error' : 'success']}</svg><span>${escHtml(msg)}</span>`;
+            w.appendChild(t); requestAnimationFrame(() => t.classList.add('show'));
+            setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 250); }, 2600);
+        }
+
         const loginPage = $('loginPage');
         const appContainer = $('appContainer');
         const loadingOverlay = $('loadingOverlay');
@@ -222,7 +270,7 @@
             auth.signInWithPopup(provider)
                 .catch(err => {
                     if (err && (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request')) return;
-                    alert('Google Sign-In failed: ' + err.message);
+                    zdAlert('Google Sign-In failed: ' + err.message);
                 });
         }
 
@@ -256,6 +304,7 @@
             loadApps();
             loadNotifications();
             watchUserTickets();
+            watchMyUpdates();
             initPage();
             localStorage.setItem('stardust_uid', user.uid);
             // accounts without a username (older developers) finish their profile first
@@ -585,6 +634,8 @@
                         </div>
                     </div>
                     <span class="app-status ${st.class}">${st.label}</span>
+                    ${isLiveApp(app) && myUpdates[app.id] && myUpdates[app.id].status === 'pending' ? '<span class="app-status pend">Update in review</span>' : ''}
+                    ${isLiveApp(app) && myUpdates[app.id] && myUpdates[app.id].status === 'rejected' ? `<div class="app-reject"><b>Update not approved:</b> ${escHtml(myUpdates[app.id].rejectReason || 'No reason given.')}<br><small>The old version is still live. Edit the app, fix the issue and submit the update again.</small></div>` : ''}
                     ${app.status === 'rejected' && app.rejectReason ? `<div class="app-reject"><b>Rejected:</b> ${escHtml(app.rejectReason)}<br><small>Fix the issue, then edit the app and submit it for review again.</small></div>` : ''}
                     <div class="app-actions">
                         <button onclick="viewAppDetails('${app.id}')">Details</button>
@@ -966,19 +1017,19 @@
 
                     if (finalStatus === 'draft') {
                         addNotification(`App "${appData.name}" saved as draft!`);
-                        alert('App saved as draft! You can submit it for review later.');
+                        zdShow({ type: 'success', title: 'Saved as draft', body: 'Your app is saved in My Apps. Open it any time and choose Submit for review when it is ready.', ok: 'Got it' });
                     } else {
                         addNotification(`App "${appData.name}" was submitted for review. We will notify you and email you once it is approved or rejected.`);
-                        alert('Your app was submitted for review.\n\nOur team will check it and you will get a notification and an email with the decision. Once approved it goes live on UptoZishu.');
+                        zdShow({ type: 'success', title: 'Submitted for review', body: 'Our team will check your app. You will get a notification and an email with the decision.', steps: ['Submitted', 'Team reviews your app', 'Decision by notification and email', 'Goes live on UptoZishu'], ok: 'Got it' });
                     }
                     switchPage('myapps');
                 }).catch(err => {
                     btn.textContent = 'Submit for Review';
-                    alert('Upload failed: ' + err.message);
+                    zdAlert('Upload failed: ' + err.message);
                 });
             }).catch(err => {
                 btn.textContent = 'Submit for Review';
-                alert('Image upload failed: ' + err.message);
+                zdAlert('Image upload failed: ' + err.message);
             });
         }
 
@@ -1043,54 +1094,62 @@
         // ============================================
         // EDIT APP - Full, only file uploads (no URL fields for images)
         // ============================================
+        // updates to live apps wait for admin approval in appUpdates/<uid>/<appId>
+        let myUpdates = {};
+        const isLiveApp = a => !!a && !['draft', 'pending', 'rejected', 'suspended'].includes(a.status);
+        function watchMyUpdates() {
+            if (!currentUser) return;
+            db.ref('appUpdates/' + currentUser.uid).on('value', s => { myUpdates = s.val() || {}; if (typeof currentPage !== 'undefined' && currentPage === 'myapps') renderMyApps(); }, () => { myUpdates = {}; });
+        }
         function openEditModal(appId, mode) {
             const app = allApps.find(a => a.id === appId);
             if (!app) return;
             const isUpdate = mode === 'update';
+            const liveApp = isLiveApp(app), pu = liveApp ? myUpdates[appId] : null, src = pu ? Object.assign({}, app, pu) : app;
             editAppId = appId;
             $('editAppId').value = appId;
-            $('editName').value = app.name || '';
-            $('editCategory').value = app.category || 'Games';
-            $('editPackage').value = app.package || '';
-            $('editVersion').value = app.version || '';
-            $('editShortDesc').value = app.shortDescription || '';
-            $('editDeveloperName').value = app.developerName || '';
-            $('editLongDesc').value = app.description || '';
-            $('editApkUrl').value = app.downloadUrl || '';
-            $('editSize').value = app.size || '';
-            $('editTags').value = app.tags || '';
-            $('editSupportEmail').value = app.supportEmail || '';
-            $('editPrivacy').value = app.privacyPolicy || '';
-            $('editWebsite').value = app.website || '';
-            $('editYoutube').value = app.youtube || '';
-            $('editMinAndroid').value = app.minAndroid || '';
-            $('editPermissions').value = app.permissions || '';
+            $('editName').value = src.name || '';
+            $('editCategory').value = src.category || 'Games';
+            $('editPackage').value = src.package || '';
+            $('editVersion').value = src.version || '';
+            $('editShortDesc').value = src.shortDescription || '';
+            $('editDeveloperName').value = src.developerName || '';
+            $('editLongDesc').value = src.description || '';
+            $('editApkUrl').value = src.downloadUrl || '';
+            $('editSize').value = src.size || '';
+            $('editTags').value = src.tags || '';
+            $('editSupportEmail').value = src.supportEmail || '';
+            $('editPrivacy').value = src.privacyPolicy || '';
+            $('editWebsite').value = src.website || '';
+            $('editYoutube').value = src.youtube || '';
+            $('editMinAndroid').value = src.minAndroid || '';
+            $('editPermissions').value = src.permissions || '';
             renderPermChips('edit');
-            $('editWhatsNew').value = app.whatsNew || '';
+            $('editWhatsNew').value = src.whatsNew || '';
             buildStatusOptions(app);
             // Clear previews
             $('editIconPreview').innerHTML = '';
             $('editBannerPreview').innerHTML = '';
             // Show current icon as preview if available
-            if (app.icon) {
+            if (src.icon) {
                 const img = document.createElement('img');
-                img.src = app.icon;
+                img.src = src.icon;
                 img.style.width = '60px';
                 img.style.height = '60px';
                 img.style.borderRadius = '8px';
                 img.style.objectFit = 'cover';
                 $('editIconPreview').appendChild(img);
             }
-            if (app.banner) {
+            if (src.banner) {
                 const img = document.createElement('img');
-                img.src = app.banner;
+                img.src = src.banner;
                 img.style.width = '120px';
                 img.style.height = '60px';
                 img.style.borderRadius = '8px';
                 img.style.objectFit = 'cover';
                 $('editBannerPreview').appendChild(img);
             }
-            shotsEdit.setExisting(String(app.screenshot || '').split(',').map(s => s.trim()).filter(Boolean));
+            shotsEdit.setExisting(String(src.screenshot || '').split(',').map(s => s.trim()).filter(Boolean));
             // two modes share this form: plain edit, or publishing a new version
             const modal = $('editModal');
             modal.classList.toggle('mode-update', isUpdate);
@@ -1098,14 +1157,14 @@
             $('editHeadIcon').src = app.icon || 'https://img.icons8.com/color/144/android-os.png';
             $('editTitle').textContent = isUpdate ? 'Update app' : 'Edit app';
             $('editSub').textContent = (app.name || 'App') + (app.version ? ' · current ' + app.version : '');
-            $('editSaveBtn').textContent = isUpdate ? 'Publish update' : 'Save changes';
+            $('editSaveBtn').textContent = liveApp ? 'Submit for review' : (isUpdate ? 'Publish update' : 'Save changes');
             $('relTitle').textContent = isUpdate ? 'New release' : 'Version & download';
             $('relSub').textContent = isUpdate ? 'Fill these first: the new version, its download link and what changed.' : 'The file people download and what changed.';
-            $('editModeNote').textContent = 'Publishing an update makes this version live right away. The old version number is kept in your version history. You can also change anything else below, such as the description or screenshots.';
+            $('editModeNote').textContent = liveApp ? ((pu && pu.status === 'pending' ? 'Your previous update is still waiting for review. Submitting again replaces it. ' : pu && pu.status === 'rejected' ? 'Your last update was not approved' + (pu.rejectReason ? ': ' + pu.rejectReason : '') + '. Your changes are kept here, fix them and submit again. ' : '') + 'Changes to a live app are checked by our team first. The current version stays on the store until the update is approved.') : 'Publishing an update makes this version live right away. The old version number is kept in your version history. You can also change anything else below, such as the description or screenshots.';
             if (isUpdate) {
-                $('editVersion').value = '';
+                $('editVersion').value = pu && pu.version ? pu.version : '';
                 $('editVersion').placeholder = app.version ? 'Current ' + app.version + ', enter the new one' : 'v1.0.1';
-                $('editWhatsNew').value = '';
+                $('editWhatsNew').value = pu && pu.whatsNew ? pu.whatsNew : '';
             }
             // number the sections in the order they appear (the release section moves to the top in update mode)
             const order = (isUpdate ? ['secRelease', 'secBasic'] : ['secBasic', 'secRelease']).concat(['secImages', 'secMore', 'secPerm']).concat(isUpdate ? [] : ['secStatus']);
@@ -1172,13 +1231,13 @@
             }
         }
 
-        function saveFullEdit(e) {
+        async function saveFullEdit(e) {
             e.preventDefault();
             const id = $('editAppId').value;
             const isUpdate = $('editModal').dataset.mode === 'update';
             const app = allApps.find(a => a.id === id);
             if (!app) return;
-            const need = (field, msg) => { const el = $(field); if (!String(el.value || '').trim()) { alert(msg); el.focus(); return true; } return false; };
+            const need = (field, msg) => { const el = $(field); if (!String(el.value || '').trim()) { zdAlert(msg); el.focus(); return true; } return false; };
             if (need('editName', 'Please enter the app name.')) return;
             if (need('editShortDesc', 'Please enter a short description.')) return;
             if (need('editLongDesc', 'Please enter the long description.')) return;
@@ -1187,8 +1246,8 @@
                 if (need('editApkUrl', 'Please enter the download link of the new APK.')) return;
                 if (need('editWhatsNew', "Please write what's new in this version.")) return;
                 const v = $('editVersion').value.trim();
-                if (v === String(app.version || '').trim() && !confirm('This version number is the same as the current one. Publish anyway?')) return;
-                if ($('editApkUrl').value.trim() === String(app.downloadUrl || '').trim() && !confirm('The download link is the same as before. Publish anyway?')) return;
+                if (v === String(app.version || '').trim() && !(await zdConfirm('The version number is the same as the live one.', { title: 'Same version number', ok: 'Continue anyway', type: 'warn' }))) return;
+                if ($('editApkUrl').value.trim() === String(app.downloadUrl || '').trim() && !(await zdConfirm('The download link is the same as before.', { title: 'Same download link', ok: 'Continue anyway', type: 'warn' }))) return;
             }
             const btn = $('editSaveBtn'), label = btn.textContent;
             btn.disabled = true; btn.textContent = isUpdate ? 'Publishing…' : 'Saving…';
@@ -1239,6 +1298,21 @@
                     updates.versionHistory = history;
                 }
 
+                const toDraft = $('editStatus').value === 'draft' && !isUpdate;
+                if (isLiveApp(app) && !toDraft) {
+                    // live app: nothing changes on the store until an admin approves
+                    const pu = myUpdates[id] || {};
+                    const upd = Object.assign({}, updates); delete upd.status; delete upd.updatedDate;
+                    upd.icon = iconUrl || pu.icon || null; upd.banner = bannerUrl || pu.banner || null;
+                    Object.keys(upd).forEach(k => { if (upd[k] === null || upd[k] === undefined) delete upd[k]; });
+                    upd.status = 'pending'; upd.submittedAt = Date.now(); upd.developerUid = currentUser.uid; upd.appName = String(app.name || updates.name).slice(0, 100);
+                    return db.ref(`appUpdates/${currentUser.uid}/${id}`).set(upd).then(() => {
+                        addActivityLog(`Update for "${updates.name}" (${updates.version}) submitted for review`);
+                        addNotification(`Your update for "${updates.name}" was submitted for review. The current version stays live until it is approved.`);
+                        closeEditModal(); renderMyApps();
+                        zdShow({ type: 'success', title: 'Update sent for review', body: 'The version on the store does not change until our team approves your update.', steps: ['Submitted', 'Team reviews your update', 'Decision by notification and email', 'New version replaces the old one'], ok: 'Got it' });
+                    });
+                }
                 return db.ref(`apps/${id}`).update(updates).then(() => {
                     if (isUpdate) {
                         addActivityLog(`Update for "${updates.name}" to ${updates.version} published`);
@@ -1252,10 +1326,10 @@
                     }
                     closeEditModal();
                     renderMyApps();
-                    alert(submitting ? 'Your app was submitted for review.\n\nYou will get a notification and an email with the decision.' : isUpdate ? (wasLive ? 'Update published successfully!' : 'Update saved. It goes live after your app is approved.') : 'App updated successfully!');
+                    zdAlert(submitting ? 'Your app was submitted for review.\n\nYou will get a notification and an email with the decision.' : isUpdate ? (wasLive ? 'Update published successfully!' : 'Update saved. It goes live after your app is approved.') : 'App updated successfully!');
                 });
             }).catch(err => {
-                alert((isUpdate ? 'Could not publish the update: ' : 'Could not save: ') + err.message);
+                zdAlert((isUpdate ? 'Could not publish the update: ' : 'Could not save: ') + err.message);
             }).then(() => { btn.disabled = false; btn.textContent = label; });
         }
 
@@ -1267,8 +1341,8 @@
         // ============================================
         // DELETE APP
         // ============================================
-        function deleteApp(appId) {
-            if (!confirm('Delete this app permanently? This cannot be undone.')) return;
+        async function deleteApp(appId) {
+            if (!(await zdConfirm('This removes the app and all its data from UptoZishu. This cannot be undone.', { title: 'Delete this app?', ok: 'Delete app', danger: true }))) return;
             const app = allApps.find(a => a.id === appId);
             db.ref(`apps/${appId}`).remove().then(() => {
                 if (app) addActivityLog(`App "${app.name}" deleted`);
@@ -1554,8 +1628,8 @@
         function rerenderReviews() { if (currentPage === 'analytics') renderAnaReviews($('anaAppSelect').value); else if (currentPage === 'hiddenreviews') renderHiddenReviews(); else renderReviews(); }
 
         // hide / unhide a review: hidden reviews are removed from the store page and from the rating
-        function toggleHideReview(appId, revId, hide) {
-            if (hide && !confirm('Hide this review? It will disappear from the store and will not count in the rating. You can unhide it any time.')) return;
+        async function toggleHideReview(appId, revId, hide) {
+            if (hide && !(await zdConfirm('It will disappear from the store and will not count in the rating. You can unhide it any time.', { title: 'Hide this review?', ok: 'Hide review', type: 'warn' }))) return;
             const ref = db.ref(`reviews/${appId}/${revId}/hidden`);
             (hide ? ref.set(true) : ref.remove()).then(() => {
                 if (allReviews[appId] && allReviews[appId][revId]) { if (hide) allReviews[appId][revId].hidden = true; else delete allReviews[appId][revId].hidden; }
@@ -1564,8 +1638,8 @@
                 let sum = 0, n = 0;
                 Object.values(allReviews[appId] || {}).forEach(r => { if (r && r.text && !r.hidden) { sum += Math.min(5, Math.max(1, Math.round(+r.rating || 5))); n++; } });
                 db.ref('apps/' + appId).update({ rating: n ? Math.round((sum / n) * 10) / 10 : 0, reviewCount: n }).catch(() => {});
-                alert(hide ? 'Review hidden. It will disappear from the store in a few minutes. You can unhide it from the Hidden reviews screen.' : 'Review is visible again. It will show in the store in a few minutes.');
-            }).catch(() => alert('Could not update the review. Please publish the latest Firebase rules and try again.'));
+                if (hide) zdShow({ type: 'success', title: 'Review hidden', body: 'It will disappear from the store in a few minutes. You can unhide it from the Hidden reviews screen.', ok: 'Got it' }); else zdToast('Review is visible again');
+            }).catch(() => zdAlert('Could not update the review. Please publish the latest Firebase rules and try again.'));
         }
 
         function submitReply(appId, revId) {
@@ -1689,15 +1763,15 @@
                 if (e.target === m || (a && a.dataset.a === 'x')) { closeNotifMenu(); return; }
                 if (a && a.dataset.a === 'del') {
                     closeNotifMenu();
-                    db.ref(`notifications/${currentUser.uid}/${n.id}`).remove().catch(() => alert('Could not delete the notification. Please try again.'));
+                    db.ref(`notifications/${currentUser.uid}/${n.id}`).remove().catch(() => zdAlert('Could not delete the notification. Please try again.'));
                 }
             });
             document.body.appendChild(m);
         }
-        function clearAllNotifications() {
+        async function clearAllNotifications() {
             if (!allNotifications.length) return;
-            if (!confirm('Delete all notifications? This cannot be undone.')) return;
-            db.ref(`notifications/${currentUser.uid}`).remove().catch(() => alert('Could not clear notifications. Please try again.'));
+            if (!(await zdConfirm('All your notifications are removed for good. This cannot be undone.', { title: 'Delete all notifications?', ok: 'Delete all', danger: true }))) return;
+            db.ref(`notifications/${currentUser.uid}`).remove().catch(() => zdAlert('Could not clear notifications. Please try again.'));
         }
         document.addEventListener('keydown', e => { if (e.key === 'Escape') closeNotifMenu(); });
 
@@ -1783,12 +1857,12 @@
                     claimantEmail: String(currentUser.email || '').slice(0, 120), contactEmail: email.slice(0, 120), role: $('claimRole').value, proofUrl: proof.slice(0, 400), message: msg, screenshots: urls.join(','),
                     status: 'pending', timestamp: Date.now()
                 });
-            }).then(() => { closeClaimModal(); alert('Claim sent. The store admin will check it, and you will get a notification.'); })
+            }).then(() => { closeClaimModal(); zdShow({ type: 'success', title: 'Claim sent', body: 'The store admin will check it and you will get a notification with the decision.', ok: 'Got it' }); })
               .catch(x => { btn.disabled = false; btn.textContent = 'Send claim'; err.textContent = 'Could not send the claim. Please try again. (' + ((x && x.message) || 'error') + ')'; });
         }
-        function withdrawClaim(appId) {
-            if (!confirm('Withdraw this claim request?')) return;
-            db.ref('claims/' + currentUser.uid + '/' + appId).remove().catch(() => alert('Could not withdraw. Please try again.'));
+        async function withdrawClaim(appId) {
+            if (!(await zdConfirm('The admin will no longer review it. You can send a new claim later.', { title: 'Withdraw this claim?', ok: 'Withdraw', danger: true }))) return;
+            db.ref('claims/' + currentUser.uid + '/' + appId).remove().catch(() => zdAlert('Could not withdraw. Please try again.'));
         }
 
 
@@ -1852,8 +1926,8 @@
             PROF_FIELDS.forEach(k => { $(PROF_IDS[k]).addEventListener('input', profRefresh); $(PROF_IDS[k]).addEventListener('change', profRefresh); });
             const pick = (kind, inputId, imgFn) => $(inputId).addEventListener('change', e => {
                 const f = e.target.files && e.target.files[0]; e.target.value = ''; if (!f) return;
-                if (!/^image\//.test(f.type)) { alert('Please choose an image.'); return; }
-                if (f.size > 8 * 1024 * 1024) { alert('This image is too large. Choose one under 8 MB.'); return; }
+                if (!/^image\//.test(f.type)) { zdAlert('Please choose an image.'); return; }
+                if (f.size > 8 * 1024 * 1024) { zdAlert('This image is too large. Choose one under 8 MB.'); return; }
                 profFiles[kind] = f; imgFn(URL.createObjectURL(f)); profRefresh();
             });
             pick('logo', 'orgLogoFile', u => { $('orgLogo').src = u; });
@@ -1913,15 +1987,15 @@
             });
         }
         function copyProfileLink() {
-            const l = window._profLink; if (!l) { alert('Set a username first.'); return; }
-            (navigator.clipboard ? navigator.clipboard.writeText(l) : Promise.reject()).then(() => alert('Link copied.')).catch(() => prompt('Copy this link', l));
+            const l = window._profLink; if (!l) { zdAlert('Set a username first.'); return; }
+            (navigator.clipboard ? navigator.clipboard.writeText(l) : Promise.reject()).then(() => zdToast('Link copied')).catch(() => zdAlert(l, { title: 'Copy this link', type: 'info' }));
         }
-        function discardProfile() { if (profDirty() && !confirm('Discard your changes?')) return; profFill(); }
+        async function discardProfile() { if (profDirty() && !(await zdConfirm('Everything you typed since the last save is lost.', { title: 'Discard your changes?', ok: 'Discard', danger: true }))) return; profFill(); }
         function profUrl(v) { v = String(v || '').trim(); if (!v) return ''; return /^https?:\/\//i.test(v) ? v : 'https://' + v.replace(/^\/+/, ''); }
 
         function saveProfile() {
             if (!currentUser) return;
-            const v = profValues(), uid = currentUser.uid, err = m => { alert(m); };
+            const v = profValues(), uid = currentUser.uid, err = m => { zdAlert(m); };
             if (!profUser) return err('Your account has no username yet. Please sign out and sign in again to finish your profile.');
             if (v.name.length < 2) return err('Please enter your organization or developer name (at least 2 characters).');
             if (v.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v.email)) return err('Enter a valid contact email, or leave it empty.');
@@ -1947,8 +2021,8 @@
                 addNotification('Profile changes submitted for review. Your current profile stays live until they are approved.');
                 profFill();
                 btn.disabled = false; btn.textContent = 'Submit for review';
-                alert('Your profile changes were submitted for review.\n\nThe profile shown on the store will not change until our team approves it. You will get a notification with the decision.');
-            }).catch(x => { btn.disabled = false; btn.textContent = 'Submit for review'; alert((x && x.message ? x.message : 'Could not submit.') + (/permission/i.test((x && x.message) || '') ? '\nPublish the latest Firebase rules and try again.' : '')); });
+                zdShow({ type: 'success', title: 'Profile sent for review', body: 'Your current profile stays live on the store until our team approves the changes. You will get a notification with the decision.', steps: ['Submitted', 'Team reviews the changes', 'Notification with the decision'], ok: 'Got it' });
+            }).catch(x => { btn.disabled = false; btn.textContent = 'Submit for review'; zdAlert((x && x.message ? x.message : 'Could not submit.') + (/permission/i.test((x && x.message) || '') ? '\nPublish the latest Firebase rules and try again.' : '')); });
         }
 
         // ============================================
@@ -1988,11 +2062,36 @@
                 box.innerHTML = `<div class="sp-empty"><div class="sp-empty-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.5 7.2L3 21l1.8-5.5A8 8 0 1 1 21 12z"/></svg></div><b>${all.length ? 'No ' + tkFilter + ' tickets' : 'No tickets yet'}</b><p>${all.length ? 'Try a different filter.' : 'Having a problem or a question? Open a ticket and we will reply right here.'}</p>${all.length ? '' : '<button type="button" class="btn-primary" onclick="openTicketForm()">Open your first ticket</button>'}</div>`;
                 return;
             }
-            box.innerHTML = list.map(t => `<a class="tk-item${t.unread ? ' unread' : ''}" href="/support/ticket/?id=${encodeURIComponent(t.id)}">
+            if (!box._lp) { box._lp = true; bindTicketLongPress(box); }
+            box.innerHTML = (list.some(t => t.status === 'closed') ? '<div class="tk-hint">Tip: press and hold a closed ticket to delete it.</div>' : '') + list.map(t => `<a class="tk-item${t.unread ? ' unread' : ''}${t.status === 'closed' ? ' closed' : ''}" data-tid="${escHtml(t.id)}" href="/support/ticket/?id=${encodeURIComponent(t.id)}">
                 <span class="tk-dot"></span>
                 <span class="tk-main"><b>${escHtml(t.subject)}</b><small>${escHtml(TK_CATS[t.category] || 'General')} · ${t.lastBy === 'admin' ? 'Support replied' : 'You wrote'} · ${tkTime(t.updatedAt)}</small></span>
                 ${t.unread ? '<span class="tk-new">New reply</span>' : ''}${tkPill(t.status)}
                 <svg class="st-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></a>`).join('');
+        }
+        // long press (or right click) on a closed ticket offers to delete it
+        function bindTicketLongPress(box) {
+            let timer = null, sx = 0, sy = 0, fired = false;
+            const cancel = () => { clearTimeout(timer); timer = null; };
+            const ask = async el => {
+                const id = el.dataset.tid, t = tkList().find(x => x.id === id); if (!t) return;
+                fired = true; if (navigator.vibrate) { try { navigator.vibrate(20); } catch (e) { } }
+                el.classList.add('pressed');
+                const ok = await zdConfirm('"' + t.subject + '" and its whole conversation are removed. This cannot be undone.', { title: 'Delete this ticket?', ok: 'Delete ticket', danger: true });
+                el.classList.remove('pressed');
+                if (!ok) return;
+                const up = {}; up['tickets/' + id] = null; up['userTickets/' + currentUser.uid + '/' + id] = null;
+                el.classList.add('removing');
+                db.ref().update(up).then(() => zdToast('Ticket deleted')).catch(() => { el.classList.remove('removing'); zdAlert('Could not delete the ticket. Please publish the latest Firebase rules and try again.'); });
+            };
+            box.addEventListener('pointerdown', e => {
+                const el = e.target.closest('.tk-item.closed'); if (!el || (e.pointerType === 'mouse' && e.button !== 0)) return;
+                fired = false; sx = e.clientX; sy = e.clientY; cancel(); timer = setTimeout(() => ask(el), 550);
+            });
+            box.addEventListener('pointermove', e => { if (timer && (Math.abs(e.clientX - sx) > 10 || Math.abs(e.clientY - sy) > 10)) cancel(); });
+            ['pointerup', 'pointercancel', 'pointerleave'].forEach(n => box.addEventListener(n, cancel));
+            box.addEventListener('contextmenu', e => { const el = e.target.closest('.tk-item.closed'); if (el) { e.preventDefault(); cancel(); if (!fired) ask(el); } });
+            box.addEventListener('click', e => { if (fired) { e.preventDefault(); e.stopPropagation(); fired = false; } }, true);
         }
         function openTicketForm() {
             if (tkList().filter(t => t.status !== 'closed').length >= 5) { stToastTk('You already have 5 open tickets. Please wait for a reply or close one.'); return; }
@@ -2003,7 +2102,7 @@
             $('tkModal').classList.add('open'); setTimeout(() => $('tkSubject').focus(), 60);
         }
         function closeTicketForm() { $('tkModal').classList.remove('open'); }
-        function stToastTk(m) { const t = $('stToast'); if (!t) { alert(m); return; } t.textContent = m; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3000); }
+        function stToastTk(m) { const t = $('stToast'); if (!t) { zdAlert(m); return; } t.textContent = m; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3000); }
         function tkErr(m) { const e = $('tkErr'); e.textContent = m; e.style.display = m ? '' : 'none'; }
         function submitTicket() {
             const subject = $('tkSubject').value.trim(), text = $('tkMsg').value.trim();
@@ -2078,7 +2177,7 @@
             up['userTickets/' + uid + '/' + tkId + '/status'] = status; up['userTickets/' + uid + '/' + tkId + '/updatedAt'] = now;
             db.ref().update(up).catch(() => stToastTk('Could not update the ticket.'));
         }
-        function closeTicket() { if (confirm('Close this ticket? You can reopen it later.')) setTicketStatus('closed'); }
+        async function closeTicket() { if (await zdConfirm('A closed ticket cannot be replied to or reopened. You can open a new ticket any time.', { title: 'Close this ticket?', ok: 'Close ticket', type: 'warn' })) setTicketStatus('closed'); }
         function reopenTicket() { setTicketStatus('open'); }
 
         // ============================================
