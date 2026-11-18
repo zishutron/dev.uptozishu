@@ -402,6 +402,7 @@
             if (currentPage === 'ticket') initTicketPage();
             if (currentPage === 'feedback') initFeedbackPage();
             if (currentPage === 'advertise') initAdPage();
+            ['adApp', 'fbkApp', 'anaAppSelect', 'reviewAppSelect', 'tkApp'].forEach(enhanceAppSelect);
         }
 
         // ============================================
@@ -1115,12 +1116,13 @@
         // ============================================
         // FEEDBACK from store users about the developer's apps (read through appFeedback/<appId> -> feedback/<id>)
         // ============================================
-        const fbData = {}, fbWatch = {}; let fbFilterApp = 'all', fbFilterType = 'all', fbSeenAtOpen = 0;
+        const fbData = {}, fbWatch = {}; let fbState = {}, fbStateOn = false; let fbFilterApp = 'all', fbFilterType = 'all', fbSeenAtOpen = 0;
         const FB_SEEN_KEY = 'zt_fb_seen';
         function fbSeen() { try { return +localStorage.getItem(FB_SEEN_KEY) || 0; } catch (e) { return 0; } }
-        function fbMine() { const mine = new Set(allApps.map(a => a.id)); return Object.values(fbData).filter(f => mine.has(f.appId)).sort((a, b) => (b.ts || 0) - (a.ts || 0)); }
+        function fbMine() { const mine = new Set(allApps.map(a => a.id)); return Object.values(fbData).filter(f => mine.has(f.appId) && fbState[f.id] !== 'deleted').sort((a, b) => (b.ts || 0) - (a.ts || 0)); }
         function fbAgo(t) { const s = Math.max(1, (Date.now() - t) / 1000); if (s < 60) return 'just now'; if (s < 3600) return Math.floor(s / 60) + ' min ago'; if (s < 86400) return Math.floor(s / 3600) + ' h ago'; if (s < 2592000) return Math.floor(s / 86400) + ' d ago'; return new Date(t).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); }
         function syncFeedbackWatchers() {
+            if (!fbStateOn && currentUser) { fbStateOn = true; db.ref('devFeedback/' + currentUser.uid).on('value', s => { fbState = s.val() || {}; fbChanged(); }, () => { }); }
             allApps.forEach(a => {
                 if (fbWatch[a.id]) return; fbWatch[a.id] = true;
                 db.ref('appFeedback/' + a.id).on('value', snap => {
@@ -1138,7 +1140,7 @@
         // APP ADVERTISEMENT (paid Sponsored / Featured placement)
         // ============================================
         const AD_PLANS = { sponsored: { name: 'Sponsored', price: 100 }, featured: { name: 'Featured', price: 150 } };
-        let adPlan = 'sponsored', adShotUrl = '', adUploading = false, adSending = false, adInit = false;
+        let adEnabled = true, adPlan = 'sponsored', adShotUrl = '', adUploading = false, adSending = false, adInit = false;
         const adCamps = {}, adRefs = {};
         const adMoney = n => '₹' + n.toLocaleString('en-IN');
         const adDate = t => t ? new Date(+t).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : '';
@@ -1204,11 +1206,18 @@
                 $('adEmail').value = (currentUser && currentUser.email) || '';
                 $('adPaidOn').value = new Date().toISOString().slice(0, 10);
                 adWatch();
+                db.ref('adSettings/enabled').on('value', x => { adEnabled = x.val() !== false; adApplyPower(); }, () => { });
+                $('adDl').addEventListener('click', () => {
+                    fetch('/assets/upi-qr.jpg').then(r => r.blob()).then(bl => { const a = document.createElement('a'); a.href = URL.createObjectURL(bl); a.download = 'UptoZishu-UPI-QR.jpg'; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 800); })
+                        .catch(() => { window.open('/assets/upi-qr.jpg', '_blank'); });
+                });
             }
             fillAdApps(); adSum(); renderAdList();
         }
+        function adApplyPower() { const m = $('adMain'), o = $('adOff'); if (m) m.hidden = !adEnabled; if (o) o.hidden = adEnabled; }
         function adSubmit(e) {
             e.preventDefault(); if (adSending) return;
+            if (!adEnabled) return;
             const err = $('adErr'), v = id => ($(id).value || '').trim(), app = allApps.find(a => a.id === $('adApp').value);
             const fail = m => { err.textContent = m; };
             err.textContent = '';
@@ -1232,10 +1241,66 @@
                 zdShow({ type: 'success', title: 'Request submitted', body: 'We received your request and payment details for "' + rec.appName + '". Our team will check everything. If all is correct your app goes live in the ' + AD_PLANS[adPlan].name + ' list within 3–5 days. If something is wrong we reject it and tell you why.', steps: ['Submitted', 'Team verifies payment and details', 'Decision by notification and email', 'Live within 3–5 days'], ok: 'Done' });
                 $('adForm').reset(); adShotUrl = ''; $('adShotImg').hidden = true; $('adShotTxt').textContent = 'Tap to choose the screenshot'; $('adEmail').value = currentUser.email || ''; $('adPaidOn').value = new Date().toISOString().slice(0, 10); adSum();
             }).catch(x => { err.textContent = 'Could not send the request. ' + ((x && x.code === 'PERMISSION_DENIED') ? 'Please check that your account is active and try again.' : 'Check your internet and try again.'); })
-                .then(() => { adSending = false; btn.disabled = false; btn.textContent = 'Submit advertisement request'; });
+                .then(() => { adSending = false; btn.disabled = false; btn.textContent = 'Submit request'; });
         }
 
-        function initFeedbackPage() { fbSeenAtOpen = fbSeen(); try { localStorage.setItem(FB_SEEN_KEY, String(Date.now())); } catch (e) { } renderFeedback(); fbChanged(); }
+
+        // ============================================
+        // APP PICKER: searchable bottom sheet that replaces every app dropdown
+        // ============================================
+        function zpSheet() {
+            let sh = document.getElementById('zpSheet'); if (sh) return sh;
+            sh = document.createElement('div'); sh.id = 'zpSheet'; sh.className = 'zp-sheet'; sh.hidden = true;
+            sh.innerHTML = '<div class="zp-back" data-x></div><div class="zp-panel" role="dialog" aria-modal="true" aria-label="Choose an app"><div class="zp-grab"></div><div class="zp-sh"><b>Choose an app</b><button type="button" class="zp-x" data-x aria-label="Close">×</button></div><div class="zp-search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="zpQ" type="search" placeholder="Search your apps" autocomplete="off"></div><div class="zp-list" id="zpList"></div></div>';
+            document.body.appendChild(sh); return sh;
+        }
+        function zpOpen(sel) {
+            const sh = zpSheet(), q = sh.querySelector('#zpQ'), list = sh.querySelector('#zpList'); q.value = '';
+            const draw = () => {
+                const t = q.value.trim().toLowerCase();
+                const opts = Array.prototype.slice.call(sel.options).filter(o => !t || o.textContent.toLowerCase().indexOf(t) > -1);
+                list.innerHTML = opts.length ? opts.map(o => {
+                    const a = allApps.find(x => x.id === o.value), on = o.value === sel.value;
+                    const ico = a ? `<img src="${escHtml(a.icon || '/favicon.png')}" alt="" onerror="this.style.visibility='hidden'">` : '<div class="zp-all"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></svg></div>';
+                    return `<button type="button" class="zp-item${on ? ' on' : ''}" data-v="${escHtml(o.value)}">${ico}<span><b>${escHtml(o.textContent)}</b>${a && a.category ? `<small>${escHtml(a.category)}${a.version ? ' · v' + escHtml(a.version) : ''}</small>` : ''}</span><i><svg viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg></i></button>`;
+                }).join('') : '<div class="zp-none">No app matches your search</div>';
+            };
+            const close = () => { sh.classList.remove('open'); setTimeout(() => { sh.hidden = true; }, 220); };
+            sh.onclick = e => {
+                if (e.target.closest('[data-x]')) return close();
+                const it = e.target.closest('.zp-item'); if (!it) return;
+                sel.value = it.dataset.v; sel.dispatchEvent(new Event('change', { bubbles: true })); close();
+            };
+            q.oninput = draw; draw(); sh.hidden = false; requestAnimationFrame(() => sh.classList.add('open'));
+        }
+        function enhanceAppSelect(id) {
+            const sel = $(id); if (!sel || sel._zp) return; sel._zp = 1; sel.style.display = 'none';
+            const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'zp-btn'; btn.setAttribute('aria-label', 'Choose an app');
+            sel.parentNode.insertBefore(btn, sel.nextSibling);
+            let last = '';
+            const sync = () => {
+                const o = sel.options[sel.selectedIndex], a = allApps.find(x => x.id === sel.value), label = o ? o.textContent : 'Choose an app…';
+                const key = label + '|' + (a ? a.icon : '');
+                if (key === last) return; last = key;
+                btn.innerHTML = (a ? `<img src="${escHtml(a.icon || '/favicon.png')}" alt="" onerror="this.style.visibility='hidden'">` : '<span class="zp-dot"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span>') + `<span class="zp-t">${escHtml(label)}</span><svg class="zp-c" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>`;
+            };
+            btn.onclick = () => zpOpen(sel);
+            sel.addEventListener('change', sync); setInterval(sync, 500); sync();
+        }
+
+        function fbAction(btn) {
+            const id = btn.dataset.id, f = fbData[id]; if (!f || !currentUser) return;
+            const ref = db.ref('devFeedback/' + currentUser.uid + '/' + id);
+            if (btn.dataset.a === 'rev') { (fbState[id] === 'reviewed' ? ref.remove() : ref.set('reviewed')).catch(() => zdToast('Could not update. Try again.', 'error')); }
+            else if (btn.dataset.a === 'open') {
+                const app = allApps.find(a => a.id === f.appId) || {}, pk = String(app.package || '');
+                window.open(pk.length >= 3 ? STORE_URL + '/apps/' + encodeURIComponent(pk) + '/' : STORE_URL + '/search/?q=' + encodeURIComponent(app.name || f.appName || ''), '_blank', 'noopener');
+            } else if (btn.dataset.a === 'del') {
+                zdConfirm('This feedback is removed from your list. The store team still keeps its own copy.', { title: 'Delete this feedback?', ok: 'Delete', danger: true }).then(ok => { if (ok) ref.set('deleted').then(() => zdToast('Feedback deleted')).catch(() => zdToast('Could not delete. Try again.', 'error')); });
+            }
+        }
+        function initFeedbackPage() {
+            if (!$('fbkList')._act) { $('fbkList')._act = 1; $('fbkList').addEventListener('click', e => { const b = e.target.closest('.fbk-act button'); if (b) fbAction(b); }); } fbSeenAtOpen = fbSeen(); try { localStorage.setItem(FB_SEEN_KEY, String(Date.now())); } catch (e) { } renderFeedback(); fbChanged(); }
         function setFbkApp(v) { fbFilterApp = v; renderFeedback(); }
         function setFbkType(v) { fbFilterType = v; renderFeedback(); }
         function renderFeedback() {
@@ -1262,7 +1327,8 @@
                 ${(f.topics || []).length ? `<div class="fbk-topics">${f.topics.map(t => `<span>${escHtml(t)}</span>`).join('')}</div>` : ''}
                 <p class="fbk-msg">${escHtml(f.message || '').replace(/\n/g, '<br>')}</p>
                 ${f.device || f.appVersion ? `<div class="fbk-meta">${escHtml([f.device, f.appVersion ? 'App ' + f.appVersion : ''].filter(Boolean).join(' · '))}</div>` : ''}
-                ${imgs.length ? `<div class="fbk-shots">${imgs.map(u => `<a href="${escHtml(u)}" target="_blank" rel="noopener"><img src="${escHtml(u)}" alt="Screenshot" loading="lazy"></a>`).join('')}</div>` : ''}</div>`;
+                ${imgs.length ? `<div class="fbk-shots">${imgs.map(u => `<a href="${escHtml(u)}" target="_blank" rel="noopener"><img src="${escHtml(u)}" alt="Screenshot" loading="lazy"></a>`).join('')}</div>` : ''}
+                <div class="fbk-act"><button type="button" class="${fbState[f.id] === 'reviewed' ? 'on' : ''}" data-a="rev" data-id="${escHtml(f.id)}">${fbState[f.id] === 'reviewed' ? '✓ Reviewed' : 'Mark reviewed'}</button><button type="button" data-a="open" data-id="${escHtml(f.id)}">Open app</button><button type="button" class="del" data-a="del" data-id="${escHtml(f.id)}">Delete</button></div></div>`;
             }).join('');
         }
 
