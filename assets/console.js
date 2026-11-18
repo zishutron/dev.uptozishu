@@ -1240,10 +1240,11 @@
         };
         function initAdBanner() {
             if (currentPage !== 'dashboard' || !currentUser) return;
-            let until = 0; try { until = +localStorage.getItem('zt_promo_x') || 0; } catch (e) { }
+            const force = /[?&]promo=1/.test(location.search);
+            let until = 0; try { if (force) { localStorage.removeItem('zt_promo_x'); localStorage.removeItem('zt_promo_last'); } until = +localStorage.getItem('zt_promo_x') || 0; } catch (e) { }
             if (until > Date.now()) return;
-            db.ref('adSettings/enabled').once('value').then(en => {
-                if (en.val() === false) return;
+            db.ref('adSettings/enabled').once('value').then(en => en.val(), () => null).then(en => {
+                if (en === false) return;
                 // developers with a plan that is under review or still active never see the promo; ended or rejected plans do not count
                 return db.ref('userAds/' + currentUser.uid).once('value').then(ua => {
                     const ids = Object.keys(ua.val() || {});
