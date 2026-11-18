@@ -12,7 +12,7 @@
     <title>App Advertisement — UptoZishu Console</title>
     <meta name="robots" content="noindex,nofollow">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <link rel="stylesheet" href="/assets/console.css?v=20261118a">
+    <link rel="stylesheet" href="/assets/console.css?v=20261118c">
 <script>(function(){try{var t=localStorage.getItem('zt_console_theme');var l=t?t==='light':!matchMedia('(prefers-color-scheme: dark)').matches;if(l){var r=document.documentElement.style;r.setProperty('--bg-dark','#f1f5f9');r.setProperty('--bg-card','#ffffff');r.setProperty('--bg-input','#e2e8f0');r.setProperty('--text-light','#0f172a');r.setProperty('--text-gray','#475569');r.setProperty('--border-color','#cbd5e1');}}catch(e){}})();</script>
     <script>try{if(!localStorage.getItem('stardust_uid'))location.replace('/auth/?next='+encodeURIComponent(location.pathname+location.search));}catch(e){}</script>
 </head>
@@ -63,7 +63,7 @@
                 <span class="badge red" id="feedbackBadge" style="display:none">0</span>
             </a>
             <a class="nav-item active" data-page="advertise" href="/advertise/">
-                <span class="ico-ads" aria-hidden="true"></span>
+                <svg class="ico-ads-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.2 4.4H4.8A1.8 1.8 0 0 0 3 6.200v11A1.8 1.8 0 0 0 4.800 19h12.400a1.800 1.800 0 0 0 1.800-1.800V10.600"/><path d="M3 8h9.400"/><rect x="5.600" y="9.600" width="10.800" height="5.200" rx=".9"/><text x="11" y="13.700" font-size="3.900" font-weight="800" text-anchor="middle" fill="currentColor" stroke="none" font-family="Arial,sans-serif">Ads</text><circle cx="6.600" cy="16.900" r=".8"/><path d="M9.400 16.900h6.200"/><circle cx="17.700" cy="6.300" r="3.600"/><path d="M18.600 5.200c-.3-.5-1-.6-1.500-.4-.7.300-.6 1.100.1 1.300l.9.300c.7.200.8 1 .1 1.300-.5.200-1.200.1-1.600-.4M17.700 4.100v.5M17.700 8v.5"/></svg>
                 <span>App Advertisement</span>
                 <span class="badge red" id="adBadge" style="display:none">0</span>
             </a>
@@ -106,84 +106,21 @@
 <div class="ad-wrap">
 
   <div class="ad-hero">
-    <span class="ad-hero-ico"></span>
-    <div><h2>Promote your app</h2><p>Reach more people on the UptoZishu store. Choose a plan, pay by UPI and send us the proof. Our team does the rest.</p></div>
-  </div>
-
-  <div class="ad-off" id="adOff" hidden>
-    <span class="ad-hero-ico dim"></span>
-    <h3>This feature is not available yet</h3>
-    <p>App advertisements are paused for now. We are not accepting new requests at the moment. Please check back soon, we will open it again shortly.</p>
-    <small>Questions? Write to <b>support.stardustofficial@gmail.com</b></small>
+    <span class="ad-hero-ico"><svg class="ico-ads-svg hero" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.2 4.4H4.8A1.8 1.8 0 0 0 3 6.200v11A1.8 1.8 0 0 0 4.800 19h12.400a1.800 1.800 0 0 0 1.800-1.800V10.600"/><path d="M3 8h9.400"/><rect x="5.600" y="9.600" width="10.800" height="5.200" rx=".9"/><text x="11" y="13.700" font-size="3.900" font-weight="800" text-anchor="middle" fill="currentColor" stroke="none" font-family="Arial,sans-serif">Ads</text><circle cx="6.600" cy="16.900" r=".8"/><path d="M9.400 16.900h6.200"/><circle cx="17.700" cy="6.300" r="3.600"/><path d="M18.600 5.200c-.3-.5-1-.6-1.500-.4-.7.300-.6 1.100.1 1.300l.9.300c.7.200.8 1 .1 1.300-.5.200-1.200.1-1.600-.4M17.700 4.100v.5M17.700 8v.5"/></svg></span>
+    <div><h2>Grow your apps</h2><p>Choose a plan to get more visibility on the UptoZishu store. Every plan is checked and activated by our team.</p></div>
   </div>
 
   <div id="adMain">
-  <div class="ad-trust"><span>✓ Verified by our team</span><span>✓ Live in 3–5 days</span><span>✓ Pay securely by UPI</span></div>
-
-  <form id="adForm" class="ad-form" novalidate>
-
-    <section class="ad-step">
-      <header><i>1</i><div><h3>Choose your app and plan</h3><p>Pick the app you want to promote and where it should appear.</p></div></header>
-      <div class="form-group"><label for="adApp">Your app</label><select id="adApp"></select><small id="adAppHint"></small></div>
-      <div class="ad-plans" id="adPlans">
-        <button type="button" class="ad-plan on" data-plan="sponsored"><em class="ad-radio"></em><span class="ad-tag">Sponsored</span><b>₹100<small>/ month</small></b><p>Shown in the <b>Sponsored</b> row at the very top of the store home page and on the search screen.</p></button>
-        <button type="button" class="ad-plan" data-plan="featured"><em class="ad-radio"></em><span class="ad-tag f">Featured</span><b>₹150<small>/ month</small></b><p>A big banner slide in the <b>Featured</b> list on the store home page. Your app needs a feature banner.</p></button>
-      </div>
-      <div class="ad-row">
-        <div class="form-group"><label for="adMonths">Duration</label><select id="adMonths"><option value="1">1 month</option><option value="2">2 months</option><option value="3">3 months</option><option value="6">6 months</option><option value="12">12 months</option></select></div>
-        <div class="ad-total"><span>Total to pay</span><b id="adTotal">₹100</b></div>
-      </div>
-    </section>
-
-    <section class="ad-step">
-      <header><i>2</i><div><h3>Pay by UPI</h3><p>Pay the exact total, then keep the payment screenshot.</p></div></header>
-      <div class="ad-pay-in">
-        <div class="ad-qr"><img src="/assets/upi-qr.jpg" alt="UPI QR code for payment" width="190" height="238"><button type="button" class="ad-dl" id="adDl">Download QR</button></div>
-        <div class="ad-pay-d">
-          <div class="ad-kv"><span>Pay to</span><b>UptoZishu</b></div>
-          <div class="ad-kv"><span>UPI ID</span><b id="adUpi">7654613259@fam</b><button type="button" class="ad-copy" data-copy="7654613259@fam">Copy</button></div>
-          <div class="ad-kv"><span>Amount</span><b id="adAmt2" class="ad-amt">₹100</b></div>
-          <a class="btn-ad-upi" id="adUpiLink" href="#">Pay with UPI app</a>
-          <p class="ad-note">Scan the QR, use the UPI ID, or tap the button on your phone.</p>
-        </div>
-      </div>
-    </section>
-
-    <section class="ad-step">
-      <header><i>3</i><div><h3>Your details and proof</h3><p>We use these to verify your payment. Please enter them exactly.</p></div></header>
-      <div class="ad-row">
-        <div class="form-group"><label for="adName">Full name</label><input id="adName" type="text" maxlength="80" autocomplete="name" placeholder="Person who paid"></div>
-        <div class="form-group"><label for="adPhone">Phone number</label><input id="adPhone" type="tel" maxlength="20" autocomplete="tel" placeholder="10 digit mobile number"></div>
-      </div>
-      <div class="form-group"><label for="adEmail">Contact email</label><input id="adEmail" type="email" maxlength="120" autocomplete="email" placeholder="you@example.com"></div>
-      <div class="ad-row">
-        <div class="form-group"><label for="adUtr">UTR / transaction ID</label><input id="adUtr" type="text" maxlength="40" autocomplete="off" placeholder="12 digit UTR number"></div>
-        <div class="form-group"><label for="adPaidOn">Payment date</label><input id="adPaidOn" type="date"></div>
-      </div>
-      <div class="form-group"><label>Payment screenshot <em>required</em></label>
-        <label class="ad-shot" id="adShotBox"><input id="adShot" type="file" accept="image/*" hidden><svg viewBox="0 0 24 24"><path d="M12 16V4m0 0-4 4m4-4 4 4M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg><span id="adShotTxt">Tap to upload the screenshot</span><img id="adShotImg" alt="" hidden></label>
-      </div>
-      <div class="form-group"><label for="adNote">Message for our team <em>optional</em></label><textarea id="adNote" rows="3" maxlength="400" placeholder="Preferred start date or anything we should know"></textarea></div>
-    </section>
-
-    <section class="ad-step ad-final">
-      <div class="ad-how">
-        <h4>What happens next</h4>
-        <ol>
-          <li><b>We verify everything.</b> Our team checks your details and payment.</li>
-          <li><b>Correct?</b> Your app is added to the category.</li>
-          <li><b>Something wrong?</b> The request is rejected and we tell you why.</li>
-          <li><b>Goes live within 3–5 days</b> after payment.</li>
-        </ol>
-      </div>
-      <label class="ad-check"><input id="adAgree" type="checkbox"><span>I confirm the details and the payment are correct. I understand the request is rejected if anything is wrong, and the app goes live within 3–5 days after payment. Payments are non-refundable once the app is live.</span></label>
-      <div class="ad-err" id="adErr" role="alert"></div>
-      <button class="btn-ad-go" id="adGo" type="submit">Submit request</button>
-    </section>
-  </form>
+    <div class="ad-trust"><span>✓ Verified by our team</span><span>✓ Live in 3–5 days</span><span>✓ Pay securely by UPI</span></div>
+    <div class="ad-plans" id="adPlans"></div>
+  </div>
 
   <div class="ad-list-h"><h3>Your requests</h3></div>
   <div id="adList"></div>
+
+  <div class="ad-off" id="adOff" hidden>
+    <span class="ad-off-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.500v5M12 16.200v.1"/></svg></span>
+    <div><h3>Advertisement feature is not available yet.</h3><p>We are not accepting new plan requests at the moment. Your earlier requests stay visible above. Please check back soon.</p><small>Questions? Write to <b>support.stardustofficial@gmail.com</b></small></div>
   </div>
 </div>
 </div>
@@ -195,6 +132,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
-    <script src="/assets/console.js?v=20261118a"></script>
+    <script src="/assets/console.js?v=20261118c"></script>
+<div class="adf" id="adFlow" hidden></div>
 </body>
 </html>
