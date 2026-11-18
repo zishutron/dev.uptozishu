@@ -389,6 +389,7 @@
 
         // Runs once the user is signed in: prepares only the page that is open
         function initPage() {
+            if (currentPage !== 'auth') { try { adWatchStart(); } catch (e) { } }
             if (currentPage === 'dashboard' || currentPage === 'analytics') loadStats();
             if (currentPage === 'dashboard') updateDashboard();
             if (currentPage === 'notifications') renderNotifications();
@@ -457,7 +458,6 @@
                 if (currentPage === 'dashboard') updateDashboard();
                 if (currentPage === 'myapps') renderMyApps();
                 if (currentPage === 'analytics') populateAnalyticsSelect();
-                if (currentPage === 'advertise') fillAdApps();
                 if (currentPage === 'reviews') { populateReviewSelect(); renderReviews(); }
                 if (currentPage === 'hiddenreviews') { populateReviewSelect(); renderHiddenReviews(); }
                 showLoading(false);
@@ -1109,7 +1109,15 @@
                 const bar = document.createElement('div'); bar.id = 'suspBar';
                 bar.innerHTML = '<b>Account suspended</b><span>' + escHtml(why) + '</span><a href="mailto:support.stardustofficial@gmail.com?subject=Suspended%20account">Contact support</a>';
                 document.body.prepend(bar); document.body.classList.add('susp');
-                zdShow({ type: 'error', title: 'Your account is suspended', body: why + '\n\nYou can look around, but you cannot upload, update, review or send tickets. Contact support if you think this is a mistake.', ok: 'I understand' });
+                const open = ['notifications', 'settings', 'profile', 'auth', 'legal'];
+                if (open.indexOf(currentPage) < 0) {
+                    document.querySelectorAll('.page-section').forEach(x => { x.style.display = 'none'; });
+                    const f = $('adFlow'); if (f) f.hidden = true;
+                    const n = document.createElement('div'); n.id = 'suspNotice'; n.className = 'susp-notice';
+                    n.innerHTML = '<div class="susp-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/></svg></div><h2>Your account is suspended</h2><p class="susp-why">' + escHtml(why) + '</p><p>This page is not available while your account is suspended. You can still open Notifications, Settings and Profile.</p><div class="susp-act"><a class="susp-b" href="mailto:support.stardustofficial@gmail.com?subject=Suspended%20account">Contact support</a><a class="susp-b ghost" href="/notifications/">Open notifications</a></div>';
+                    const hdr = document.querySelector('.top-header'), main = document.querySelector('.main-content');
+                    if (hdr && hdr.parentNode) hdr.parentNode.insertBefore(n, hdr.nextSibling); else if (main) main.appendChild(n);
+                }
             }).catch(() => { });
         }
 
@@ -1137,91 +1145,189 @@
             if (currentPage === 'feedback') renderFeedback();
         }
         // ============================================
-        // APP ADVERTISEMENT (paid Sponsored / Featured placement)
+        // PLANS: Sponsored, Featured, Verified badge, Developer Pro
         // ============================================
-        const AD_PLANS = { sponsored: { name: 'Sponsored', price: 100 }, featured: { name: 'Featured', price: 150 } };
-        let adEnabled = true, adPlan = 'sponsored', adShotUrl = '', adUploading = false, adSending = false, adInit = false;
+        const AD_PLANS = {
+            sponsored: {
+                name: 'Sponsored', price: 99, cls: '', tagline: 'Be the first app people see in the store.',
+                perks: ['Your app in the Sponsored row at the top of the store home page', 'Shown on the store search screen', 'One app of your choice', 'Checked and approved by our team'],
+                cmp: [['Store listing', 'Yes', 'Yes'], ['Sponsored row on store home', 'No', 'Yes'], ['Shown on search screen', 'No', 'Yes'], ['Position', 'Normal', 'Top of the store']]
+            },
+            featured: {
+                name: 'Featured', price: 149, cls: 'f', tagline: 'A big banner slide on the store home page.',
+                perks: ['Big banner slide in the Featured list on the home page', 'Seen first by everyone who opens the store', 'One app of your choice (needs a feature banner)', 'Checked and approved by our team'],
+                cmp: [['Store listing', 'Yes', 'Yes'], ['Featured banner slide on home', 'No', 'Yes'], ['Large banner image', 'No', 'Yes'], ['Position', 'Normal', 'Top of the store']]
+            },
+            verified: {
+                name: 'Verified badge', price: 49, cls: 'v', tagline: 'Show people that you are a trusted developer.',
+                perks: ['Verified badge on your store developer page', 'Verified badge on every app you publish', '"Verified" in the developer verification section of your apps', 'Covers your whole developer profile'],
+                cmp: [['Badge on developer page', 'Unverified', 'Verified'], ['Badge on your apps', 'Unverified', 'Verified'], ['Developer verification section', 'Orange, not verified', 'Green, verified'], ['Trust before download', 'Normal', 'Higher']]
+            },
+            pro: {
+                name: 'Developer Pro', price: 299, cls: 'p', tagline: 'Sponsored, Featured and a 2 month Verified badge in one plan.',
+                perks: ['One app in the Sponsored row', 'One app in the Featured list', 'Verified badge for your developer profile, for 2 months', 'All in one plan and one payment'],
+                cmp: [['Sponsored row on store home', 'No', '1 app'], ['Featured banner slide on home', 'No', '1 app'], ['Verified badge', 'Unverified', 'Verified for 2 months'], ['Payments to make', '3 separate', '1 payment']]
+            }
+        };
+        const AD_ORDER = ['sponsored', 'featured', 'verified', 'pro'];
+        const AD_RANK = ['pro', 'featured', 'sponsored', 'verified'];
+        let adEnabled = true, adShotUrl = '', adUploading = false, adSending = false, adInit = false, adWatching = false, adSel = null, adFlowOpen = false;
         const adCamps = {}, adRefs = {};
-        const adMoney = n => '₹' + n.toLocaleString('en-IN');
+        const adMoney = n => '₹' + (+n || 0).toLocaleString('en-IN');
         const adDate = t => t ? new Date(+t).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : '';
-        function adSum() {
-            const m = +($('adMonths') || {}).value || 1, tot = AD_PLANS[adPlan].price * m;
-            $('adTotal').textContent = adMoney(tot); $('adAmt2').textContent = adMoney(tot);
-            $('adUpiLink').href = 'upi://pay?pa=7654613259@fam&pn=UptoZishu&cu=INR&am=' + tot + '&tn=' + encodeURIComponent('Ad ' + AD_PLANS[adPlan].name + ' ' + m + 'm');
-            adAppHint();
+        const adTotal = () => AD_PLANS[adSel.plan].price * adSel.months;
+        const adLive = () => allApps.filter(isLiveApp);
+        const adOpts = sel => adLive().map(a => `<option value="${escHtml(a.id)}"${a.id === sel ? ' selected' : ''}>${escHtml(a.name || 'App')}</option>`).join('');
+
+        // ---------- plan badge in the header ----------
+        function renderPlanBadge() {
+            const hdr = document.querySelector('.top-header'); if (!hdr) return;
+            let b = document.getElementById('planBadge');
+            if (!b) { b = document.createElement('div'); b.id = 'planBadge'; b.className = 'plan-badge'; b.hidden = true; const ui = hdr.querySelector('.user-info'); hdr.insertBefore(b, ui || null); }
+            const now = Date.now(), active = {};
+            Object.keys(adCamps).forEach(k => { const c = adCamps[k]; if (c && c.status === 'approved' && +c.endsAt > now) active[c.plan] = Math.max(active[c.plan] || 0, +c.endsAt); });
+            const top = AD_RANK.find(p => active[p]);
+            if (!top) { b.hidden = true; return; }
+            b.hidden = false; b.className = 'plan-badge ' + (AD_PLANS[top].cls || 's');
+            b.title = Object.keys(active).map(p => AD_PLANS[p].name + ' until ' + adDate(active[p])).join('\n');
+            b.innerHTML = '<svg viewBox="0 0 24 24"><path d="M12 3l2.6 5.6 6.1.7-4.5 4.2 1.2 6L12 16.5 6.6 19.5l1.2-6L3.300 9.300l6.100-.7z"/></svg><span>' + escHtml(AD_PLANS[top].name) + '</span>';
         }
-        function adAppHint() {
-            const h = $('adAppHint'), id = $('adApp').value, a = allApps.find(x => x.id === id);
-            h.textContent = adPlan === 'featured' && a && !a.banner ? 'This app has no feature banner yet. Add one in My Apps before choosing Featured, otherwise the request may be rejected.' : '';
+
+        // ---------- the developer's own requests ----------
+        function adHead(c) {
+            const p = AD_PLANS[c.plan] || { name: c.plan }, two = c.plan === 'pro' && c.appName2;
+            const nm = c.plan === 'verified' ? (c.appName || 'Developer profile') : (c.appName || 'App') + (two ? ' + ' + c.appName2 : '');
+            return { p, nm };
         }
         function renderAdList() {
             const box = $('adList'); if (!box) return;
             const list = Object.keys(adCamps).map(k => adCamps[k]).filter(Boolean).sort((a, b) => (b.submittedAt || 0) - (a.submittedAt || 0));
-            if (!list.length) { box.innerHTML = '<div class="sp-empty"><p style="padding:18px 8px">No advertisement requests yet.</p></div>'; return; }
+            if (!list.length) { box.innerHTML = '<div class="ad-empty"><b>No requests yet</b><span>Plans you buy and their status will show here.</span></div>'; return; }
             box.innerHTML = list.map(c => {
                 const st = c.status === 'approved' && c.endsAt && c.endsAt < Date.now() ? 'expired' : (c.status || 'pending');
-                const lab = { pending: 'Under review', approved: 'Approved', rejected: 'Rejected', expired: 'Ended' }[st] || st;
-                const info = st === 'pending' ? 'Our team is verifying your payment and details. Your app goes live within 3–5 days after payment.'
-                    : st === 'approved' ? 'Live from ' + adDate(c.startsAt) + ' until ' + adDate(c.endsAt) + '. The store updates within about 10 minutes of each rebuild.'
-                    : st === 'rejected' ? 'Reason: ' + (c.rejectReason || 'Details or payment could not be verified.') + ' You can submit a new request with the correct details.'
-                    : 'This placement has ended. You can book it again anytime.';
-                return `<div class="ad-card ${st}"><div class="ad-card-h"><img src="${escHtml(c.appIcon || '/favicon.png')}" alt="" onerror="this.style.visibility='hidden'"><div><b>${escHtml(c.appName || 'App')}</b><small>${escHtml((AD_PLANS[c.plan] || {}).name || '')} · ${c.months} month${c.months > 1 ? 's' : ''} · ${adMoney(+c.amount || 0)}</small></div><span class="ad-st ${st}">${lab}</span></div><p>${escHtml(info)}</p><small class="ad-ref">Sent ${adDate(c.submittedAt)} · Ref #${escHtml(String(c.id || '').slice(-6).toUpperCase())}</small></div>`;
+                const lab = { pending: 'Under review', approved: 'Active', rejected: 'Rejected', expired: 'Ended' }[st] || st;
+                const h = adHead(c);
+                const info = st === 'pending' ? 'Our team is verifying your payment and details. It goes live within 3–5 days after payment.'
+                    : st === 'approved' ? 'Active from ' + adDate(c.startsAt) + ' until ' + adDate(c.endsAt) + '. The store updates within about 10 minutes.'
+                        : st === 'rejected' ? 'Reason: ' + (c.rejectReason || 'Details or payment could not be verified.') + ' You can send a new request with the correct details.'
+                            : 'This plan has ended. You can get it again anytime.';
+                return `<div class="ad-card ${st}"><div class="ad-card-h"><img src="${escHtml(c.appIcon || '/favicon.png')}" alt="" onerror="this.style.visibility='hidden'"><div><b>${escHtml(h.nm)}</b><small>${escHtml(h.p.name)} · ${c.months} month${c.months > 1 ? 's' : ''} · ${adMoney(c.amount)}</small></div><span class="ad-st ${st}">${lab}</span></div><p>${escHtml(info)}</p><small class="ad-ref">Sent ${adDate(c.submittedAt)} · Ref #${escHtml(String(c.id || '').slice(-6).toUpperCase())}</small></div>`;
             }).join('');
         }
-        function adWatch() {
+        function adWatchStart() {
+            if (adWatching || !currentUser) return; adWatching = true;
             db.ref('userAds/' + currentUser.uid).on('value', s => {
                 const ids = Object.keys(s.val() || {});
                 Object.keys(adRefs).filter(k => !ids.includes(k)).forEach(k => { adRefs[k].off(); delete adRefs[k]; delete adCamps[k]; });
                 ids.filter(k => !adRefs[k]).forEach(k => {
                     adRefs[k] = db.ref('adCampaigns/' + k);
-                    adRefs[k].on('value', x => { const v = x.val(); if (v) adCamps[k] = Object.assign({ id: k }, v); else delete adCamps[k]; renderAdList(); }, () => { });
+                    adRefs[k].on('value', x => { const v = x.val(); if (v) adCamps[k] = Object.assign({ id: k }, v); else delete adCamps[k]; renderAdList(); renderPlanBadge(); }, () => { });
                 });
-                renderAdList();
+                renderAdList(); renderPlanBadge();
             }, () => { });
         }
-        function fillAdApps() {
-            const sel = $('adApp'); if (!sel) return;
-            const live = allApps.filter(isLiveApp), keep = sel.value;
-            sel.innerHTML = live.length ? live.map(a => `<option value="${escHtml(a.id)}">${escHtml(a.name || 'App')}</option>`).join('') : '<option value="">You have no live app yet</option>';
-            if (keep && live.some(a => a.id === keep)) sel.value = keep;
-            adAppHint();
+
+        // ---------- plan cards on the Advertisement screen ----------
+        function renderPlanCards() {
+            const box = $('adPlans'); if (!box) return;
+            box.innerHTML = AD_ORDER.map(k => {
+                const p = AD_PLANS[k];
+                return `<div class="ad-plan ${p.cls}"><div class="ad-plan-top"><span class="ad-tag ${p.cls}">${escHtml(p.name)}</span>${k === 'pro' ? '<em class="ad-best">All in one</em>' : ''}</div><div class="ad-price"><b>${adMoney(p.price)}</b><small>/ month</small></div><p class="ad-tl">${escHtml(p.tagline)}</p><ul>${p.perks.map(x => `<li><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span>${escHtml(x)}</span></li>`).join('')}</ul><button type="button" class="ad-get ${p.cls}" data-plan="${k}">Get ${escHtml(p.name.toLowerCase() === 'verified badge' ? 'verified badge' : p.name.toLowerCase())} plan</button></div>`;
+            }).join('');
         }
-        function initAdPage() {
-            if (!adInit) {
-                adInit = true;
-                $('adPlans').addEventListener('click', e => { const b = e.target.closest('[data-plan]'); if (!b) return; adPlan = b.dataset.plan; Array.prototype.forEach.call($('adPlans').children, x => x.classList.toggle('on', x === b)); adSum(); });
-                $('adMonths').addEventListener('change', adSum); $('adApp').addEventListener('change', adAppHint);
-                document.querySelectorAll('.ad-copy').forEach(b => b.addEventListener('click', () => { const v = b.dataset.copy; const ok = () => { b.textContent = 'Copied'; setTimeout(() => b.textContent = 'Copy', 1500); }; try { navigator.clipboard.writeText(v).then(ok, ok); } catch (e) { ok(); } }));
-                $('adShot').addEventListener('change', () => {
-                    const f = $('adShot').files[0]; if (!f) return;
-                    if (!/^image\//.test(f.type)) { $('adErr').textContent = 'Please choose an image file.'; return; }
-                    adUploading = true; adShotUrl = ''; $('adErr').textContent = ''; $('adShotTxt').textContent = 'Uploading…'; $('adShotImg').hidden = true;
-                    uploadToImgBB(f).then(u => {
-                        if (!/^https?:\/\//i.test(u)) throw new Error('upload');
-                        adShotUrl = u; $('adShotImg').src = u; $('adShotImg').hidden = false; $('adShotTxt').textContent = 'Screenshot uploaded. Tap to change';
-                    }).catch(() => { $('adShotTxt').textContent = 'Upload failed. Tap to try again'; $('adErr').textContent = 'The screenshot could not be uploaded. Check your internet and try again.'; })
-                        .then(() => { adUploading = false; });
-                });
-                $('adForm').addEventListener('submit', adSubmit);
-                $('adEmail').value = (currentUser && currentUser.email) || '';
-                $('adPaidOn').value = new Date().toISOString().slice(0, 10);
-                adWatch();
-                db.ref('adSettings/enabled').on('value', x => { adEnabled = x.val() !== false; adApplyPower(); }, () => { });
-                $('adDl').addEventListener('click', () => {
-                    fetch('/assets/upi-qr.jpg').then(r => r.blob()).then(bl => { const a = document.createElement('a'); a.href = URL.createObjectURL(bl); a.download = 'UptoZishu-UPI-QR.jpg'; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 800); })
-                        .catch(() => { window.open('/assets/upi-qr.jpg', '_blank'); });
-                });
-            }
-            fillAdApps(); adSum(); renderAdList();
+        function adApplyPower() {
+            const m = $('adMain'), o = $('adOff'); if (m) m.hidden = !adEnabled; if (o) o.hidden = adEnabled;
+            if (!adEnabled && adFlowOpen) adCloseFlow(true);
         }
-        function adApplyPower() { const m = $('adMain'), o = $('adOff'); if (m) m.hidden = !adEnabled; if (o) o.hidden = adEnabled; }
-        function adSubmit(e) {
-            e.preventDefault(); if (adSending) return;
+
+        // ---------- full screen flow: details, then payment ----------
+        const flowEl = () => $('adFlow');
+        function adOpenFlow(plan) {
             if (!adEnabled) return;
-            const err = $('adErr'), v = id => ($(id).value || '').trim(), app = allApps.find(a => a.id === $('adApp').value);
-            const fail = m => { err.textContent = m; };
+            adSel = { plan: plan, months: 1, app1: '', app2: '' };
+            const live = adLive(); adSel.app1 = live[0] ? live[0].id : ''; adSel.app2 = adSel.app1;
+            adFlowOpen = true; document.documentElement.classList.add('ad-lock');
+            flowEl().hidden = false; adShowDetails(); flowEl().scrollTop = 0;
+            try { history.pushState({ adflow: 1 }, ''); } catch (e) { }
+        }
+        function adCloseFlow(skipHistory) {
+            adFlowOpen = false; document.documentElement.classList.remove('ad-lock'); const f = flowEl(); if (f) { f.hidden = true; f.innerHTML = ''; }
+            adShotUrl = '';
+            if (!skipHistory) { try { if (history.state && history.state.adflow) history.back(); } catch (e) { } }
+        }
+        function adBar() { return '<div class="adf-bar"><button type="button" class="adf-back" id="adfBack"><svg viewBox="0 0 24 24"><path d="m15 5-7 7 7 7"/></svg>Go Back</button></div>'; }
+        function adCmpRows(p) { return p.cmp.map(r => `<tr><td>${escHtml(r[0])}</td><td class="no">${escHtml(r[1])}</td><td class="yes">${escHtml(r[2])}</td></tr>`).join(''); }
+        function adApps(P) {
+            const two = adSel.plan === 'pro', one = adSel.plan === 'sponsored' || adSel.plan === 'featured';
+            if (!live().length && (two || one)) return `<div class="adf-card"><h3>Select your app</h3><div class="adf-warn">You have no live app yet. Publish an app first, then come back to get this plan.</div></div>`;
+            if (adSel.plan === 'verified') return `<div class="adf-card"><h3>Applies to</h3><p class="adf-p">The badge belongs to your <b>developer profile</b>. It shows on your store developer page and on every app you publish. No app needs to be chosen.</p></div>`;
+            if (two) return `<div class="adf-card"><h3>Select your apps</h3><div class="form-group"><label for="adfApp1">App for the Sponsored row</label><select id="adfApp1">${adOpts(adSel.app1)}</select></div><div class="form-group"><label for="adfApp2">App for the Featured list</label><select id="adfApp2">${adOpts(adSel.app2)}</select><small id="adfHint"></small></div></div>`;
+            return `<div class="adf-card"><h3>Select your app</h3><div class="form-group"><select id="adfApp1">${adOpts(adSel.app1)}</select><small id="adfHint"></small></div></div>`;
+        }
+        function live() { return adLive(); }
+        function adShowDetails() {
+            const P = AD_PLANS[adSel.plan], f = flowEl();
+            f.innerHTML = adBar() + `<div class="adf-body"><div class="adf-head ${P.cls}"><span class="ad-tag ${P.cls}">${escHtml(P.name)}</span><h2>${escHtml(P.name)} plan</h2><p>${escHtml(P.tagline)}</p><div class="adf-rate"><b>${adMoney(P.price)}</b><small>/ month</small></div></div>
+            ${adApps()}
+            <div class="adf-card"><h3>What you get</h3><table class="adf-cmp"><thead><tr><th></th><th>Free apps</th><th>With ${escHtml(P.name)}</th></tr></thead><tbody>${adCmpRows(P)}</tbody></table></div>
+            <div class="adf-card"><h3>Choose the duration</h3><div class="adf-months" id="adfMonths">${[1, 2, 3, 6, 12].map(m => `<button type="button" class="${m === adSel.months ? 'on' : ''}" data-m="${m}">${m} ${m > 1 ? 'months' : 'month'}</button>`).join('')}</div>
+              <div class="adf-sum"><div><span>Plan</span><b>${escHtml(P.name)}</b></div><div><span>Rate</span><b>${adMoney(P.price)} × <i id="adfMo">${adSel.months}</i></b></div><div class="tot"><span>Total to pay</span><b id="adfTot">${adMoney(adTotal())}</b></div></div>
+              <p class="adf-p small">After payment our team verifies everything. If all is correct your plan goes live within 3–5 days. If anything is wrong the request is rejected and you are told why.</p></div></div>
+            <div class="adf-foot"><button type="button" class="adf-cta" id="adfNext">Get ${escHtml(P.name.toLowerCase() === 'verified badge' ? 'verified badge' : P.name.toLowerCase())} plan</button></div>`;
+            ['adfApp1', 'adfApp2'].forEach(enhanceAppSelect);
+            adHint();
+        }
+        function adHint() {
+            const h = $('adfHint'); if (!h) return;
+            const id = adSel.plan === 'pro' ? adSel.app2 : adSel.app1, a = allApps.find(x => x.id === id);
+            h.textContent = (adSel.plan === 'featured' || adSel.plan === 'pro') && a && !a.banner ? 'This app has no feature banner yet. Add one in My Apps first, or the request may be rejected.' : '';
+        }
+        async function adNext() {
+            const need = adSel.plan !== 'verified', btn = $('adfNext');
+            const a1 = allApps.find(a => a.id === adSel.app1), a2 = allApps.find(a => a.id === adSel.app2);
+            if (need && (!a1 || !isLiveApp(a1))) return zdAlert('Please choose one of your live apps.', { title: 'Choose an app' });
+            if (adSel.plan === 'pro' && (!a2 || !isLiveApp(a2))) return zdAlert('Please choose the app for the Featured list.', { title: 'Choose an app' });
+            btn.disabled = true;
+            try {
+                if (adSel.plan === 'verified' || adSel.plan === 'pro') {
+                    const nm = (await db.ref('devprofiles/' + currentUser.uid + '/name').once('value')).val();
+                    if (!nm) { btn.disabled = false; return zdAlert('The Verified badge belongs to your public developer profile, and you have not set it up yet. Save your developer profile first, then come back.', { title: 'Set up your profile first' }); }
+                    adSel.devName = nm;
+                }
+            } catch (e) { }
+            btn.disabled = false;
+            adShowPay();
+        }
+        function adShowPay() {
+            const P = AD_PLANS[adSel.plan], tot = adTotal(), f = flowEl(), a1 = allApps.find(a => a.id === adSel.app1), a2 = allApps.find(a => a.id === adSel.app2);
+            const rows = [['Plan', P.name]];
+            if (adSel.plan === 'pro') { rows.push(['Sponsored app', a1 ? a1.name : '']); rows.push(['Featured app', a2 ? a2.name : '']); } else if (adSel.plan !== 'verified') rows.push(['App', a1 ? a1.name : '']);
+            rows.push(['Duration', adSel.months + (adSel.months > 1 ? ' months' : ' month')]);
+            const upi = 'upi://pay?pa=7654613259@fam&pn=UptoZishu&cu=INR&am=' + tot + '&tn=' + encodeURIComponent(P.name + ' ' + adSel.months + 'm');
+            f.innerHTML = `<form id="adForm" novalidate>${adBar()}<div class="adf-body">
+              <div class="adf-card"><h3>Order summary</h3><div class="adf-sum plain">${rows.map(r => `<div><span>${escHtml(r[0])}</span><b>${escHtml(r[1])}</b></div>`).join('')}<div class="tot"><span>Total to pay</span><b>${adMoney(tot)}</b></div></div></div>
+              <div class="adf-card"><h3>Pay by UPI</h3><p class="adf-p small">Pay the exact total using any UPI app, then fill the details below.</p>
+                <div class="ad-pay-in"><div class="ad-qr"><img src="/assets/upi-qr.jpg" alt="UPI QR code" width="190" height="238"><button type="button" class="ad-dl" id="adDl">Download QR</button></div>
+                <div class="ad-pay-d"><div class="ad-kv"><span>Pay to</span><b>UptoZishu</b></div><div class="ad-kv"><span>UPI ID</span><b>7654613259@fam</b><button type="button" class="ad-copy" data-copy="7654613259@fam">Copy</button></div><div class="ad-kv"><span>Amount</span><b class="ad-amt">${adMoney(tot)}</b></div><p class="ad-note">Scan the QR, use the UPI ID, or tap Pay below on your phone.</p></div></div></div>
+              <div class="adf-card"><h3>Payment details</h3><p class="adf-p small">We use these to verify your payment. Enter them exactly as in your payment app.</p>
+                <div class="ad-row"><div class="form-group"><label for="adName">Full name</label><input id="adName" type="text" maxlength="80" autocomplete="name" placeholder="Person who paid"></div><div class="form-group"><label for="adPhone">Phone number</label><input id="adPhone" type="tel" maxlength="20" autocomplete="tel" placeholder="10 digit mobile number"></div></div>
+                <div class="form-group"><label for="adEmail">Contact email</label><input id="adEmail" type="email" maxlength="120" autocomplete="email" placeholder="you@example.com" value="${escHtml((currentUser && currentUser.email) || '')}"></div>
+                <div class="ad-row"><div class="form-group"><label for="adUtr">UTR / transaction ID</label><input id="adUtr" type="text" maxlength="40" autocomplete="off" placeholder="12 digit UTR number"></div><div class="form-group"><label for="adPaidOn">Payment date</label><input id="adPaidOn" type="date" value="${new Date().toISOString().slice(0, 10)}"></div></div>
+                <div class="form-group"><label>Payment screenshot <em>required</em></label><label class="ad-shot"><input id="adShot" type="file" accept="image/*" hidden><svg viewBox="0 0 24 24"><path d="M12 16V4m0 0-4 4m4-4 4 4M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg><span id="adShotTxt">Tap to upload the screenshot</span><img id="adShotImg" alt="" hidden></label></div>
+                <div class="form-group"><label for="adNote">Message for our team <em>optional</em></label><textarea id="adNote" rows="3" maxlength="400" placeholder="Preferred start date or anything we should know"></textarea></div></div>
+              <div class="adf-card"><div class="ad-how"><h4>What happens next</h4><ol><li><b>We verify everything.</b> Our team checks your details and payment.</li><li><b>All correct?</b> Your plan is activated.</li><li><b>Something wrong?</b> The request is rejected and we tell you why.</li><li><b>Goes live within 3–5 days</b> after payment.</li></ol></div>
+                <label class="ad-check"><input id="adAgree" type="checkbox"><span>I confirm the details and the payment are correct. I understand the request is rejected if anything is wrong, and the plan goes live within 3–5 days after payment. Payments are non-refundable once the plan is live.</span></label><div class="ad-err" id="adErr" role="alert"></div></div></div>
+              <div class="adf-foot two"><a class="adf-pay" href="${upi}">Pay ${adMoney(tot)}</a><button class="adf-cta" id="adGo" type="submit">Submit</button></div></form>`;
+            flowEl().scrollTop = 0;
+        }
+        function adBack() {
+            if ($('adForm')) { adShotUrl = ''; adShowDetails(); flowEl().scrollTop = 0; return; }
+            adCloseFlow();
+        }
+        function adSubmit(e) {
+            e.preventDefault(); if (adSending || !adEnabled) return;
+            const err = $('adErr'), v = id => ($(id).value || '').trim(), fail = m => { err.textContent = m; err.scrollIntoView({ block: 'center', behavior: 'smooth' }); };
             err.textContent = '';
-            if (!app || !isLiveApp(app)) return fail('Please choose one of your live apps.');
             if (v('adName').length < 3) return fail('Enter the full name of the person who paid.');
             if (!/^[0-9+\s-]{10,16}$/.test(v('adPhone'))) return fail('Enter a valid phone number.');
             if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v('adEmail'))) return fail('Enter a valid contact email.');
@@ -1230,18 +1336,57 @@
             if (adUploading) return fail('Please wait, the screenshot is still uploading.');
             if (!adShotUrl) return fail('Upload the payment screenshot. It is required.');
             if (!$('adAgree').checked) return fail('Please tick the confirmation box.');
-            const dup = Object.values(adCamps).some(c => c.appId === app.id && c.plan === adPlan && c.status === 'pending');
-            if (dup) return fail('You already have a pending ' + AD_PLANS[adPlan].name + ' request for this app. Please wait for the decision.');
-            const months = +$('adMonths').value || 1, amount = AD_PLANS[adPlan].price * months, id = db.ref('adCampaigns').push().key, now = Date.now();
-            const rec = { uid: currentUser.uid, appId: app.id, appName: String(app.name || '').slice(0, 100), appIcon: /^https?:\/\//i.test(app.icon || '') ? String(app.icon).slice(0, 500) : '', plan: adPlan, months: months, amount: amount, name: v('adName'), phone: v('adPhone'), email: v('adEmail'), utr: v('adUtr').toUpperCase(), paidOn: v('adPaidOn'), shot: adShotUrl, note: v('adNote'), status: 'pending', submittedAt: now };
+            const P = AD_PLANS[adSel.plan], a1 = allApps.find(a => a.id === adSel.app1), a2 = allApps.find(a => a.id === adSel.app2);
+            const dup = Object.values(adCamps).some(c => c.status === 'pending' && c.plan === adSel.plan && (adSel.plan === 'verified' || (c.appId === adSel.app1 && (adSel.plan !== 'pro' || c.appId2 === adSel.app2))));
+            if (dup) return fail('You already have a pending ' + P.name + ' request. Please wait for the decision.');
+            const id = db.ref('adCampaigns').push().key, now = Date.now(), amount = adTotal();
+            const icon = x => (x && /^https?:\/\//i.test(x.icon || '')) ? String(x.icon).slice(0, 500) : '';
+            const rec = { uid: currentUser.uid, plan: adSel.plan, months: adSel.months, amount: amount, name: v('adName'), phone: v('adPhone'), email: v('adEmail'), utr: v('adUtr').toUpperCase(), paidOn: v('adPaidOn'), shot: adShotUrl, note: v('adNote'), status: 'pending', submittedAt: now };
+            if (adSel.plan === 'verified') { rec.appName = String(adSel.devName || 'Developer profile').slice(0, 100); }
+            else { rec.appId = a1.id; rec.appName = String(a1.name || '').slice(0, 100); rec.appIcon = icon(a1); if (adSel.plan === 'pro') { rec.appId2 = a2.id; rec.appName2 = String(a2.name || '').slice(0, 100); } }
             const up = {}; up['adCampaigns/' + id] = rec; up['userAds/' + currentUser.uid + '/' + id] = true;
             adSending = true; const btn = $('adGo'); btn.disabled = true; btn.textContent = 'Submitting…';
             db.ref().update(up).then(() => {
-                addNotification('Your ' + AD_PLANS[adPlan].name + ' advertisement request for "' + rec.appName + '" (' + adMoney(amount) + ') was received. Our team will verify the payment. If everything is correct your app goes live within 3–5 days.');
-                zdShow({ type: 'success', title: 'Request submitted', body: 'We received your request and payment details for "' + rec.appName + '". Our team will check everything. If all is correct your app goes live in the ' + AD_PLANS[adPlan].name + ' list within 3–5 days. If something is wrong we reject it and tell you why.', steps: ['Submitted', 'Team verifies payment and details', 'Decision by notification and email', 'Live within 3–5 days'], ok: 'Done' });
-                $('adForm').reset(); adShotUrl = ''; $('adShotImg').hidden = true; $('adShotTxt').textContent = 'Tap to choose the screenshot'; $('adEmail').value = currentUser.email || ''; $('adPaidOn').value = new Date().toISOString().slice(0, 10); adSum();
-            }).catch(x => { err.textContent = 'Could not send the request. ' + ((x && x.code === 'PERMISSION_DENIED') ? 'Please check that your account is active and try again.' : 'Check your internet and try again.'); })
-                .then(() => { adSending = false; btn.disabled = false; btn.textContent = 'Submit request'; });
+                addNotification('Your ' + P.name + ' plan request (' + adMoney(amount) + ') was received. Our team will verify the payment. If everything is correct it goes live within 3–5 days.');
+                adCloseFlow(true);
+                zdShow({ type: 'success', title: 'Request submitted', body: 'We received your ' + P.name + ' plan request and payment details. Our team will check everything. If all is correct your plan goes live within 3–5 days. If something is wrong we reject it and tell you why.', steps: ['Submitted', 'Team verifies payment and details', 'Decision by notification and email', 'Live within 3–5 days'], ok: 'Go to dashboard', sticky: true }).then(() => { location.href = '/'; });
+            }).catch(x => { adSending = false; btn.disabled = false; btn.textContent = 'Submit'; err.textContent = 'Could not send the request. ' + ((x && x.code === 'PERMISSION_DENIED') ? 'Please check that your account is active and the advertisement service is on.' : 'Check your internet and try again.'); });
+        }
+        function adBindFlow() {
+            const f = flowEl();
+            f.addEventListener('click', e => {
+                if (e.target.closest('#adfBack')) return adBack();
+                if (e.target.closest('#adfNext')) return adNext();
+                const m = e.target.closest('#adfMonths button'); if (m) { adSel.months = +m.dataset.m; Array.prototype.forEach.call($('adfMonths').children, x => x.classList.toggle('on', x === m)); $('adfMo').textContent = adSel.months; $('adfTot').textContent = adMoney(adTotal()); return; }
+                const cp = e.target.closest('.ad-copy'); if (cp) { const ok = () => { cp.textContent = 'Copied'; setTimeout(() => cp.textContent = 'Copy', 1500); }; try { navigator.clipboard.writeText(cp.dataset.copy).then(ok, ok); } catch (x) { ok(); } return; }
+                if (e.target.closest('#adDl')) {
+                    fetch('/assets/upi-qr.jpg').then(r => r.blob()).then(bl => { const a = document.createElement('a'); a.href = URL.createObjectURL(bl); a.download = 'UptoZishu-UPI-QR.jpg'; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 800); }).catch(() => { window.open('/assets/upi-qr.jpg', '_blank'); });
+                }
+            });
+            f.addEventListener('change', e => {
+                if (e.target.id === 'adfApp1') { adSel.app1 = e.target.value; if (adSel.plan !== 'pro') adHint(); }
+                else if (e.target.id === 'adfApp2') { adSel.app2 = e.target.value; adHint(); }
+                else if (e.target.id === 'adShot') {
+                    const file = e.target.files[0]; if (!file) return;
+                    if (!/^image\//.test(file.type)) { $('adErr').textContent = 'Please choose an image file.'; return; }
+                    adUploading = true; adShotUrl = ''; $('adErr').textContent = ''; $('adShotTxt').textContent = 'Uploading…'; $('adShotImg').hidden = true;
+                    uploadToImgBB(file).then(u => {
+                        if (!/^https?:\/\//i.test(u)) throw new Error('upload');
+                        adShotUrl = u; $('adShotImg').src = u; $('adShotImg').hidden = false; $('adShotTxt').textContent = 'Screenshot uploaded. Tap to change';
+                    }).catch(() => { $('adShotTxt').textContent = 'Upload failed. Tap to try again'; $('adErr').textContent = 'The screenshot could not be uploaded. Check your internet and try again.'; }).then(() => { adUploading = false; });
+                }
+            });
+            f.addEventListener('submit', adSubmit);
+            window.addEventListener('popstate', () => { if (adFlowOpen) { if ($('adForm')) { adShotUrl = ''; adShowDetails(); try { history.pushState({ adflow: 1 }, ''); } catch (e) { } } else adCloseFlow(true); } });
+        }
+        function initAdPage() {
+            if (!adInit) {
+                adInit = true;
+                renderPlanCards(); adBindFlow();
+                $('adPlans').addEventListener('click', e => { const b = e.target.closest('[data-plan]'); if (b) adOpenFlow(b.dataset.plan); });
+                db.ref('adSettings/enabled').on('value', x => { adEnabled = x.val() !== false; adApplyPower(); }, () => { });
+            }
+            adWatchStart(); renderAdList(); adApplyPower();
         }
 
 
@@ -2197,7 +2342,7 @@
                 profUser = u.username || window._devUsername || pub.username || '';
                 $('profUsername').value = profUser ? '@' + profUser : '';
                 $('orgUser').textContent = profUser ? '@' + profUser : '';
-                profVerified = liveP.verified === true; profCreated = +pub.createdAt || 0;
+                profVerified = liveP.verified === true && !(+liveP.verifiedUntil && +liveP.verifiedUntil < Date.now()); profCreated = +pub.createdAt || 0;
                 profSaved = {
                     name: pub.name || d.displayName || u.name || currentUser.displayName || '', tagline: pub.tagline || '', type: pub.type || '',
                     about: pub.about || d.bio || u.bio || '', location: pub.location || d.country || '', founded: pub.founded || '',
