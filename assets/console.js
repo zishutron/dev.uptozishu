@@ -389,7 +389,7 @@
 
         // Runs once the user is signed in: prepares only the page that is open
         function initPage() {
-            if (currentPage !== 'auth') { try { adWatchStart(); } catch (e) { } }
+            if (currentPage !== 'auth') { try { adWatchStart(); initAdBanner(); } catch (e) { } }
             if (currentPage === 'dashboard' || currentPage === 'analytics') loadStats();
             if (currentPage === 'dashboard') updateDashboard();
             if (currentPage === 'notifications') renderNotifications();
@@ -1171,7 +1171,7 @@
         };
         const AD_ORDER = ['sponsored', 'featured', 'verified', 'pro'];
         const AD_RANK = ['pro', 'featured', 'sponsored', 'verified'];
-        let adEnabled = true, adShotUrl = '', adUploading = false, adSending = false, adInit = false, adWatching = false, adSel = null, adFlowOpen = false;
+        let adDeep = false, adEnabled = true, adShotUrl = '', adUploading = false, adSending = false, adInit = false, adWatching = false, adSel = null, adFlowOpen = false;
         const adCamps = {}, adRefs = {};
         const adMoney = n => '₹' + (+n || 0).toLocaleString('en-IN');
         const adDate = t => t ? new Date(+t).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : '';
@@ -1225,6 +1225,47 @@
                 });
                 renderAdList(); renderPlanBadge();
             }, () => { });
+        }
+
+
+        // run fn once the developer's apps are loaded (or after a short wait)
+        function allAppsReady(fn) { let n = 0; (function t() { if (allApps.length || n++ > 12) fn(); else setTimeout(t, 300); })(); }
+
+        // ---------- rotating plan banner on the dashboard ----------
+        const AD_PROMOS = {
+            verified: { cls: 'pv', title: 'Get verified badge at just ₹49', sub: 'Show a Verified badge on your developer page and every app you publish.', ico: '<path d="M12 3l7 3v5.500c0 4.200-2.900 7.600-7 9-4.100-1.400-7-4.800-7-9V6z"/><path d="m8.800 12.200 2.200 2.200 4.200-4.400"/>' },
+            sponsored: { cls: 'ps', title: 'Get Sponsored at just ₹99', sub: 'Sponsored row on the store home page and search screen.', ico: '<path d="M12 3l2.700 5.600 6.100.8-4.500 4.300 1.100 6.100L12 16.800 6.600 19.800l1.100-6.100L3.200 9.400l6.100-.8z"/>' },
+            featured: { cls: 'pf', title: 'Get Featured at just ₹149', sub: 'Featured slides are the first thing people see when they open the store.', ico: '<rect x="3" y="5" width="18" height="11" rx="2.500"/><path d="M7 20h10M9 16v4M15 16v4"/><path d="m9.500 8.500 5 2-5 2z"/>' },
+            pro: { cls: 'pp', title: 'Get Developer Pro at just ₹299', sub: 'Sponsored app, Featured app and a Verified badge together.', ico: '<path d="M3 8l4.500 3.500L12 4l4.500 7.500L21 8l-2 11H5z"/>' }
+        };
+        function initAdBanner() {
+            if (currentPage !== 'dashboard' || !currentUser) return;
+            let until = 0; try { until = +localStorage.getItem('zt_promo_x') || 0; } catch (e) { }
+            if (until > Date.now()) return;
+            db.ref('adSettings/enabled').once('value').then(en => {
+                if (en.val() === false) return;
+                // developers with a plan that is under review or still active never see the promo; ended or rejected plans do not count
+                return db.ref('userAds/' + currentUser.uid).once('value').then(ua => {
+                    const ids = Object.keys(ua.val() || {});
+                    return Promise.all(ids.map(id => db.ref('adCampaigns/' + id).once('value').then(x => x.val(), () => null)));
+                }).then(sts => { if (sts.some(c => c && (c.status === 'pending' || (c.status === 'approved' && +c.endsAt > Date.now())))) return;
+                setTimeout(() => {
+                    if (document.body.classList.contains('susp') || document.getElementById('adPromo')) return;
+                    const now = Date.now(), act = {};
+                    Object.keys(adCamps).forEach(k => { const c = adCamps[k]; if (c && c.status === 'approved' && +c.endsAt > now) act[c.plan] = 1; });
+                    if (act.pro) return;
+                    let keys = Object.keys(AD_PROMOS).filter(k => !act[k]), last = ''; try { last = localStorage.getItem('zt_promo_last') || ''; } catch (e) { }
+                    if (keys.length > 1) keys = keys.filter(k => k !== last);
+                    if (!keys.length) return;
+                    const k = keys[Math.floor(Math.random() * keys.length)], pm = AD_PROMOS[k];
+                    try { localStorage.setItem('zt_promo_last', k); } catch (e) { }
+                    const el = document.createElement('div'); el.id = 'adPromo'; el.className = 'promo ' + pm.cls;
+                    el.innerHTML = '<div class="promo-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' + pm.ico + '</svg></div><div class="promo-t"><b>' + escHtml(pm.title) + '</b><span>' + escHtml(pm.sub) + '</span></div><a class="promo-go" href="/advertise/?plan=' + k + '">Get now</a><button type="button" class="promo-x" aria-label="Close">×</button>';
+                    el.querySelector('.promo-x').onclick = () => { try { localStorage.setItem('zt_promo_x', String(Date.now() + 6 * 3600 * 1000)); } catch (e) { } el.classList.add('out'); setTimeout(() => el.remove(), 250); };
+                    const hdr = document.querySelector('.top-header'); if (hdr && hdr.parentNode) hdr.parentNode.insertBefore(el, hdr.nextSibling);
+                }, 1400);
+                });
+            }).catch(() => { });
         }
 
         // ---------- plan cards on the Advertisement screen ----------
@@ -1321,7 +1362,7 @@
             flowEl().scrollTop = 0;
         }
         function adBack() {
-            if ($('adForm')) { adShotUrl = ''; adShowDetails(); flowEl().scrollTop = 0; return; }
+            if (document.getElementById('adForm')) { adShotUrl = ''; adShowDetails(); flowEl().scrollTop = 0; return; }
             adCloseFlow();
         }
         function adSubmit(e) {
@@ -1377,14 +1418,15 @@
                 }
             });
             f.addEventListener('submit', adSubmit);
-            window.addEventListener('popstate', () => { if (adFlowOpen) { if ($('adForm')) { adShotUrl = ''; adShowDetails(); try { history.pushState({ adflow: 1 }, ''); } catch (e) { } } else adCloseFlow(true); } });
+            window.addEventListener('popstate', () => { if (adFlowOpen) { if (document.getElementById('adForm')) { adShotUrl = ''; adShowDetails(); try { history.pushState({ adflow: 1 }, ''); } catch (e) { } } else adCloseFlow(true); } });
         }
         function initAdPage() {
             if (!adInit) {
                 adInit = true;
                 renderPlanCards(); adBindFlow();
                 $('adPlans').addEventListener('click', e => { const b = e.target.closest('[data-plan]'); if (b) adOpenFlow(b.dataset.plan); });
-                db.ref('adSettings/enabled').on('value', x => { adEnabled = x.val() !== false; adApplyPower(); }, () => { });
+                const want = (new URLSearchParams(location.search).get('plan') || '');
+                db.ref('adSettings/enabled').on('value', x => { adEnabled = x.val() !== false; adApplyPower(); if (want && AD_PLANS[want] && adEnabled && !adFlowOpen && !adDeep) { adDeep = true; allAppsReady(() => adOpenFlow(want)); } }, () => { });
             }
             adWatchStart(); renderAdList(); adApplyPower();
         }
