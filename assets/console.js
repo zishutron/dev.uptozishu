@@ -1186,8 +1186,9 @@
         };
         const AD_ORDER = ['sponsored', 'featured', 'verified', 'pro'];
         const AD_RANK = ['pro', 'featured', 'sponsored', 'verified'];
-        let adDeep = false, adEnabled = true, adShotUrl = '', adUploading = false, adSending = false, adInit = false, adWatching = false, adSel = null, adFlowOpen = false;
+        let adDeep = false, adEnabled = true, adPlansOff = {}, adShotUrl = '', adUploading = false, adSending = false, adInit = false, adWatching = false, adSel = null, adFlowOpen = false;
         const adCamps = {}, adRefs = {};
+        const adPlanOk = k => adEnabled && adPlansOff[k] !== false;
         const adMoney = n => '₹' + (+n || 0).toLocaleString('en-IN');
         const adDate = t => t ? new Date(+t).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : '';
         const adTotal = () => AD_PLANS[adSel.plan].price * adSel.months;
@@ -1258,7 +1259,7 @@
             const force = /[?&]promo=1/.test(location.search);
             let until = 0; try { if (force) { localStorage.removeItem('zt_promo_x'); localStorage.removeItem('zt_promo_last'); } until = +localStorage.getItem('zt_promo_x') || 0; } catch (e) { }
             if (until > Date.now()) return;
-            db.ref('adSettings/enabled').once('value').then(en => en.val(), () => null).then(en => {
+            Promise.all([db.ref('adSettings/enabled').once('value').then(en => en.val(), () => null), db.ref('adSettings/plans').once('value').then(x => x.val() || {}, () => ({}))]).then(([en, offPlans]) => {
                 if (en === false) return;
                 // developers with a plan that is under review or still active never see the promo; ended or rejected plans do not count
                 return db.ref('userAds/' + currentUser.uid).once('value').then(ua => {
@@ -1270,7 +1271,7 @@
                     const now = Date.now(), act = {};
                     Object.keys(adCamps).forEach(k => { const c = adCamps[k]; if (c && c.status === 'approved' && +c.endsAt > now) act[c.plan] = 1; });
                     if (act.pro) return;
-                    let keys = Object.keys(AD_PROMOS).filter(k => !act[k]), last = ''; try { last = localStorage.getItem('zt_promo_last') || ''; } catch (e) { }
+                    let keys = Object.keys(AD_PROMOS).filter(k => !act[k] && offPlans[k] !== false), last = ''; try { last = localStorage.getItem('zt_promo_last') || ''; } catch (e) { }
                     if (keys.length > 1) keys = keys.filter(k => k !== last);
                     if (!keys.length) return;
                     const k = keys[Math.floor(Math.random() * keys.length)], pm = AD_PROMOS[k];
@@ -1289,7 +1290,7 @@
             const box = $('adPlans'); if (!box) return;
             box.innerHTML = AD_ORDER.map(k => {
                 const p = AD_PLANS[k];
-                return `<div class="ad-plan ${p.cls}"><div class="ad-plan-top"><span class="ad-tag ${p.cls}">${escHtml(p.name)}</span>${k === 'pro' ? '<em class="ad-best">All in one</em>' : ''}</div><div class="ad-price"><b>${adMoney(p.price)}</b><small>/ month</small></div><p class="ad-tl">${escHtml(p.tagline)}</p><ul>${p.perks.map(x => `<li><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span>${escHtml(x)}</span></li>`).join('')}</ul><button type="button" class="ad-get ${p.cls}" data-plan="${k}">Get ${escHtml(p.name.toLowerCase() === 'verified badge' ? 'verified badge' : p.name.toLowerCase())} plan</button></div>`;
+                return `<div class="ad-plan ${p.cls}"><div class="ad-plan-top"><span class="ad-tag ${p.cls}">${escHtml(p.name)}</span>${k === 'pro' ? '<em class="ad-best">All in one</em>' : ''}</div><div class="ad-price"><b>${adMoney(p.price)}</b><small>/ month</small></div><p class="ad-tl">${escHtml(p.tagline)}</p><ul>${p.perks.map(x => `<li><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span>${escHtml(x)}</span></li>`).join('')}</ul>${adPlansOff[k] === false ? `<button type="button" class="ad-get ${p.cls}" disabled style="opacity:.55;cursor:not-allowed">Not available right now</button>` : `<button type="button" class="ad-get ${p.cls}" data-plan="${k}">Get ${escHtml(p.name.toLowerCase() === 'verified badge' ? 'verified badge' : p.name.toLowerCase())} plan</button>`}</div>`;
             }).join('');
         }
         function adApplyPower() {
@@ -1300,7 +1301,7 @@
         // ---------- full screen flow: details, then payment ----------
         const flowEl = () => $('adFlow');
         function adOpenFlow(plan) {
-            if (!adEnabled) return;
+            if (!adPlanOk(plan)) return;
             adSel = { plan: plan, months: 1, app1: '', app2: '' };
             const live = adLive(); adSel.app1 = live[0] ? live[0].id : ''; adSel.app2 = adSel.app1;
             adFlowOpen = true; document.documentElement.classList.add('ad-lock');
@@ -1382,7 +1383,7 @@
             adCloseFlow();
         }
         function adSubmit(e) {
-            e.preventDefault(); if (adSending || !adEnabled) return;
+            e.preventDefault(); if (adSending || !adEnabled || !adPlanOk(adSel && adSel.plan)) return;
             const err = $('adErr'), v = id => ($(id).value || '').trim(), fail = m => { err.textContent = m; err.scrollIntoView({ block: 'center', behavior: 'smooth' }); };
             err.textContent = '';
             if (v('adName').length < 3) return fail('Enter the full name of the person who paid.');
@@ -1442,7 +1443,9 @@
                 renderPlanCards(); adBindFlow();
                 $('adPlans').addEventListener('click', e => { const b = e.target.closest('[data-plan]'); if (b) adOpenFlow(b.dataset.plan); });
                 const want = (new URLSearchParams(location.search).get('plan') || '');
-                db.ref('adSettings/enabled').on('value', x => { adEnabled = x.val() !== false; adApplyPower(); if (want && AD_PLANS[want] && adEnabled && !adFlowOpen && !adDeep) { adDeep = true; allAppsReady(() => adOpenFlow(want)); } }, () => { });
+                db.ref('adSettings/enabled').on('value', x => { adEnabled = x.val() !== false; adApplyPower(); if (want && AD_PLANS[want] && adPlanOk(want) && !adFlowOpen && !adDeep) { adDeep = true; allAppsReady(() => adOpenFlow(want)); } }, () => { });
+                // a single plan can be switched off by the admin: adSettings/plans/<plan> === false
+                db.ref('adSettings/plans').on('value', x => { adPlansOff = x.val() || {}; renderPlanCards(); if (adFlowOpen && adSel && !adPlanOk(adSel.plan)) adCloseFlow(true); }, () => { });
             }
             adWatchStart(); renderAdList(); adApplyPower();
         }
