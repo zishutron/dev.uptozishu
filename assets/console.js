@@ -579,7 +579,7 @@
 
         function buildStatusOptions(app) {
             const cur = app.status || 'live';
-            const opts = { live: [['live', 'Live: visible in the store'], ['draft', 'Draft: hidden']], pending: [['pending', 'In review: waiting for approval'], ['draft', 'Withdraw to draft']], draft: [['draft', 'Draft: hidden'], ['pending', 'Submit for review']], rejected: [['rejected', 'Rejected: not submitted'], ['draft', 'Keep as draft'], ['pending', 'Submit for review again']], suspended: [['suspended', 'Suspended by UptoZishu']], approved: [['live', 'Live: visible in the store'], ['draft', 'Draft: hidden']] }[cur] || [['draft', 'Draft: hidden'], ['pending', 'Submit for review']];
+            const opts = { upcoming: [['upcoming', 'Coming soon: visible in the store'], ['draft', 'Draft: hidden']], live: [['live', 'Live: visible in the store'], ['draft', 'Draft: hidden']], pending: [['pending', 'In review: waiting for approval'], ['draft', 'Withdraw to draft']], draft: [['draft', 'Draft: hidden'], ['pending', 'Submit for review']], rejected: [['rejected', 'Rejected: not submitted'], ['draft', 'Keep as draft'], ['pending', 'Submit for review again']], suspended: [['suspended', 'Suspended by UptoZishu']], approved: [['live', 'Live: visible in the store'], ['draft', 'Draft: hidden']] }[cur] || [['draft', 'Draft: hidden'], ['pending', 'Submit for review']];
             const sel = $('editStatus'); sel.innerHTML = opts.map(o => `<option value="${o[0]}">${o[1]}</option>`).join('');
             sel.value = cur === 'approved' ? 'live' : cur; sel.disabled = cur === 'suspended';
         }
@@ -588,6 +588,7 @@
             if (appStatus === 'live' && !live) return false;
             if (appStatus === 'draft' && app.status !== 'draft') return false;
             if (appStatus === 'pending' && app.status !== 'pending') return false;
+            if (appStatus === 'upcoming' && app.status !== 'upcoming') return false;
             if (appStatus === 'rejected' && app.status !== 'rejected') return false;
             if (!appQuery) return true;
             const hay = [app.name, app.package, app.category, app.version, app.tags, app.shortDescription, app.status].join(' ').toLowerCase();
@@ -624,7 +625,8 @@
                     'live': { class: 'live', label: 'Live' },
                     'approved': { class: 'live', label: 'Live' },
                     'draft': { class: 'draft', label: 'Draft' },
-                    'pending': { class: 'pend', label: 'In review' },
+                    'pending': { class: 'pend', label: app.preRelease ? 'In review · Pre-release' : 'In review' },
+                    'upcoming': { class: 'pend', label: 'Coming soon' },
                     'rejected': { class: 'rej', label: 'Rejected' },
                     'suspended': { class: 'susp', label: 'Suspended' }
                 };
@@ -636,7 +638,7 @@
                         <img src="${app.icon || 'https://img.icons8.com/color/144/android-os.png'}" onerror="this.src='https://img.icons8.com/color/144/android-os.png'">
                         <div>
                             <div class="app-name">${escHtml(app.name || 'App')}</div>
-                            <div class="app-meta">${escHtml(app.package || '')}${app.package ? ' • ' : ''}${escHtml(app.version || 'v1.0')} • ${escHtml(app.size || '0 MB')} • ${app.downloadCount || 0} downloads • ⭐ ${app.rating || 'N/A'}</div>
+                            <div class="app-meta">${app.preRelease && app.status !== 'live' ? `${escHtml(app.package || '')}${app.package ? ' • ' : ''}${app.releaseDate ? 'Expected ' + escHtml(app.releaseDate) : 'Release date not set'} • ${Number(app.preRegCount || 0).toLocaleString()} pre-registered` : `${escHtml(app.package || '')}${app.package ? ' • ' : ''}${escHtml(app.version || 'v1.0')} • ${escHtml(app.size || '0 MB')} • ${app.downloadCount || 0} downloads • ⭐ ${app.rating || 'N/A'}`}</div>
                         </div>
                     </div>
                     <span class="app-status ${st.class}">${st.label}</span>
@@ -646,7 +648,7 @@
                     <div class="app-actions">
                         <button onclick="viewAppDetails('${app.id}')">Details</button>
                         <button onclick="openEditModal('${app.id}')">Edit</button>
-                        <button onclick="openUpdateModal('${app.id}')">Update</button>
+                        ${app.status === 'upcoming' ? `<button class="primary" onclick="openReleaseModal('${app.id}')">Release now</button>` : isLiveApp(app) ? `<button onclick="openUpdateModal('${app.id}')">Update</button>` : ''}
                         <button onclick="viewAppAnalytics('${app.id}')">Analytics</button>
                         <button class="danger" onclick="deleteApp('${app.id}')">Delete</button>
                     </div>
@@ -737,7 +739,7 @@
                 if (data.minAndroid) $('upMinAndroid').value = data.minAndroid;
                 if (data.permissions) { $('upPermissions').value = data.permissions; renderPermChips('up'); }
                 if (data.whatsNew) $('upWhatsNew').value = data.whatsNew;
-                if (data.status) $('upStatus').value = data.status;
+                if (data.status) { $('upStatus').value = data.status; onUpStatusChange(); }
                 if (data.step) {
                     currentStep = data.step;
                     updateSteps();
@@ -948,6 +950,13 @@
         document.addEventListener('DOMContentLoaded', () => { renderPermChips('up'); renderPermChips('edit'); });
         renderPermChips('up'); renderPermChips('edit');
 
+        function onUpStatusChange() {
+            const pre = $('upStatus').value === 'prerelease';
+            const box = $('upPreBox'); if (box) box.hidden = !pre;
+            $('upApkUrl').required = !pre; $('upVersion').required = !pre;
+            $('uploadBtnText').textContent = $('upStatus').value === 'draft' ? 'Save Draft' : pre ? 'Submit Pre-release' : 'Submit for Review';
+        }
+
         function handleUpload(e) {
             e.preventDefault();
             const btn = $('uploadBtnText');
@@ -971,12 +980,17 @@
                 const packageName = $('upPackage').value.trim();
                 const status = $('upStatus').value;
                 const finalStatus = status === 'draft' ? 'draft' : 'pending';
+                const pre = status === 'prerelease';
+                if (pre && !($('upReleaseDate').value || '').trim()) { /* date is optional: shown as Coming soon */ }
 
                 const appData = {
                     name: $('upName').value,
                     package: packageName,
                     category: $('upCategory').value,
-                    version: $('upVersion').value,
+                    version: $('upVersion').value || (pre ? '1.0.0' : ''),
+                    preRelease: pre,
+                    releaseDate: pre ? ($('upReleaseDate').value || '') : '',
+                    preRegCount: 0,
                     shortDescription: $('upShortDesc').value,
                     description: $('upLongDesc').value,
                     whatsNew: $('upWhatsNew').value,
@@ -1003,7 +1017,7 @@
                     timestamp: Date.now(),
                     updatedDate: new Date().toISOString().split('T')[0],
                     verified: false,
-                    versionHistory: [$('upVersion').value]
+                    versionHistory: pre ? [] : [$('upVersion').value]
                 };
 
                 db.ref('apps').push(appData).then(() => {
@@ -1024,6 +1038,9 @@
                     if (finalStatus === 'draft') {
                         addNotification(`App "${appData.name}" saved as draft!`);
                         zdShow({ type: 'success', title: 'Saved as draft', body: 'Your app is saved in My Apps. Open it any time and choose Submit for review when it is ready.', ok: 'Got it' });
+                    } else if (pre) {
+                        addNotification(`Pre-release "${appData.name}" was submitted for review. We will notify you and email you once it is approved or rejected.`);
+                        zdShow({ type: 'success', title: 'Pre-release submitted', body: 'Once approved it appears in "Coming soon" on UptoZishu and people can pre-register. When you are ready, open My Apps and tap Release now.', steps: ['Submitted', 'Team reviews your listing', 'Shown as Coming soon', 'You release it with the APK'], ok: 'Got it' });
                     } else {
                         addNotification(`App "${appData.name}" was submitted for review. We will notify you and email you once it is approved or rejected.`);
                         zdShow({ type: 'success', title: 'Submitted for review', body: 'Our team will check your app. You will get a notification and an email with the decision.', steps: ['Submitted', 'Team reviews your app', 'Decision by notification and email', 'Goes live on UptoZishu'], ok: 'Got it' });
@@ -1522,7 +1539,7 @@
 
         // updates to live apps wait for admin approval in appUpdates/<uid>/<appId>
         let myUpdates = {};
-        const isLiveApp = a => !!a && !['draft', 'pending', 'rejected', 'suspended'].includes(a.status);
+        const isLiveApp = a => !!a && !['draft', 'pending', 'rejected', 'suspended', 'upcoming'].includes(a.status);
         function watchMyUpdates() {
             if (!currentUser) return;
             db.ref('appUpdates/' + currentUser.uid).on('value', s => { myUpdates = s.val() || {}; if (typeof currentPage !== 'undefined' && currentPage === 'myapps') renderMyApps(); }, () => { myUpdates = {}; });
@@ -1530,8 +1547,9 @@
         function openEditModal(appId, mode) {
             const app = allApps.find(a => a.id === appId);
             if (!app) return;
-            const isUpdate = mode === 'update';
-            const liveApp = isLiveApp(app), pu = liveApp ? myUpdates[appId] : null, src = pu ? Object.assign({}, app, pu) : app;
+            const isRelease = mode === 'release';
+            const isUpdate = mode === 'update' || isRelease;
+            const liveApp = isLiveApp(app), pu = (liveApp || isRelease) ? myUpdates[appId] : null, src = pu ? Object.assign({}, app, pu) : app;
             editAppId = appId;
             $('editAppId').value = appId;
             $('editName').value = src.name || '';
@@ -1579,15 +1597,18 @@
             // two modes share this form: plain edit, or publishing a new version
             const modal = $('editModal');
             modal.classList.toggle('mode-update', isUpdate);
-            modal.dataset.mode = isUpdate ? 'update' : 'edit';
+            modal.dataset.mode = isRelease ? 'release' : isUpdate ? 'update' : 'edit';
+            const preBox = $('editPreBox'); if (preBox) { preBox.hidden = !(app.preRelease && !isRelease); $('editReleaseDate').value = app.releaseDate || ''; }
             $('editHeadIcon').src = app.icon || 'https://img.icons8.com/color/144/android-os.png';
-            $('editTitle').textContent = isUpdate ? 'Update app' : 'Edit app';
+            $('editTitle').textContent = isRelease ? 'Release app' : isUpdate ? 'Update app' : 'Edit app';
             $('editSub').textContent = (app.name || 'App') + (app.version ? ' · current ' + app.version : '');
-            $('editSaveBtn').textContent = liveApp ? 'Submit for review' : (isUpdate ? 'Publish update' : 'Save changes');
-            $('relTitle').textContent = isUpdate ? 'New release' : 'Version & download';
+            $('editSaveBtn').textContent = (liveApp || isRelease) ? 'Submit for review' : (isUpdate ? 'Publish update' : 'Save changes');
+            $('relTitle').textContent = isRelease ? 'Release details' : isUpdate ? 'New release' : 'Version & download';
             $('relSub').textContent = isUpdate ? 'Fill these first: the new version, its download link and what changed.' : 'The file people download and what changed.';
             $('editModeNote').textContent = liveApp ? ((pu && pu.status === 'pending' ? 'Your previous update is still waiting for review. Submitting again replaces it. ' : pu && pu.status === 'rejected' ? 'Your last update was not approved' + (pu.rejectReason ? ': ' + pu.rejectReason : '') + '. Your changes are kept here, fix them and submit again. ' : '') + 'Changes to a live app are checked by our team first. The current version stays on the store until the update is approved.') : 'Publishing an update makes this version live right away. The old version number is kept in your version history. You can also change anything else below, such as the description or screenshots.';
-            if (isUpdate) {
+            if (isRelease) {
+                $('editModeNote').textContent = 'Add the APK link and version. Our team reviews it first; when approved the app goes live and everyone who pre-registered is emailed.';
+            } else if (isUpdate) {
                 $('editVersion').value = pu && pu.version ? pu.version : '';
                 $('editVersion').placeholder = app.version ? 'Current ' + app.version + ', enter the new one' : 'v1.0.1';
                 $('editWhatsNew').value = pu && pu.whatsNew ? pu.whatsNew : '';
@@ -1660,7 +1681,8 @@
         async function saveFullEdit(e) {
             e.preventDefault();
             const id = $('editAppId').value;
-            const isUpdate = $('editModal').dataset.mode === 'update';
+            const isRelease = $('editModal').dataset.mode === 'release';
+            const isUpdate = $('editModal').dataset.mode === 'update' || isRelease;
             const app = allApps.find(a => a.id === id);
             if (!app) return;
             const need = (field, msg) => { const el = $(field); if (!String(el.value || '').trim()) { zdAlert(msg); el.focus(); return true; } return false; };
@@ -1670,13 +1692,13 @@
             if (isUpdate) {
                 if (need('editVersion', 'Please enter the new version.')) return;
                 if (need('editApkUrl', 'Please enter the download link of the new APK.')) return;
-                if (need('editWhatsNew', "Please write what's new in this version.")) return;
+                if (!isRelease && need('editWhatsNew', "Please write what's new in this version.")) return;
                 const v = $('editVersion').value.trim();
-                if (v === String(app.version || '').trim() && !(await zdConfirm('The version number is the same as the live one.', { title: 'Same version number', ok: 'Continue anyway', type: 'warn' }))) return;
-                if ($('editApkUrl').value.trim() === String(app.downloadUrl || '').trim() && !(await zdConfirm('The download link is the same as before.', { title: 'Same download link', ok: 'Continue anyway', type: 'warn' }))) return;
+                if (!isRelease && v === String(app.version || '').trim() && !(await zdConfirm('The version number is the same as the live one.', { title: 'Same version number', ok: 'Continue anyway', type: 'warn' }))) return;
+                if (!isRelease && $('editApkUrl').value.trim() === String(app.downloadUrl || '').trim() && !(await zdConfirm('The download link is the same as before.', { title: 'Same download link', ok: 'Continue anyway', type: 'warn' }))) return;
             }
             const btn = $('editSaveBtn'), label = btn.textContent;
-            btn.disabled = true; btn.textContent = isUpdate ? 'Publishing…' : 'Saving…';
+            btn.disabled = true; btn.textContent = isRelease ? 'Submitting…' : isUpdate ? 'Publishing…' : 'Saving…';
             const iconFile = $('editIconFile').files[0];
             const bannerFile = $('editBannerFile').files[0];
 
@@ -1718,25 +1740,28 @@
                 const submitting = !isUpdate && updates.status === 'pending' && app.status !== 'pending';
                 if (submitting) { updates.submittedAt = Date.now(); updates.rejectReason = null; }
                 const wasLive = app.status === 'live' || app.status === 'approved';
-                if (isUpdate) {
+                if (app.preRelease && !isUpdate) updates.releaseDate = $('editReleaseDate').value || null;
+                if (isUpdate && !isRelease) {
                     const history = Array.isArray(app.versionHistory) ? app.versionHistory.slice() : [];
                     if (app.version && app.version !== updates.version) history.push(app.version);
                     updates.versionHistory = history;
                 }
 
                 const toDraft = $('editStatus').value === 'draft' && !isUpdate;
-                if (isLiveApp(app) && !toDraft) {
+                if ((isLiveApp(app) && !toDraft) || isRelease) {
                     // live app: nothing changes on the store until an admin approves
                     const pu = myUpdates[id] || {};
                     const upd = Object.assign({}, updates); delete upd.status; delete upd.updatedDate;
                     upd.icon = iconUrl || pu.icon || null; upd.banner = bannerUrl || pu.banner || null;
                     Object.keys(upd).forEach(k => { if (upd[k] === null || upd[k] === undefined) delete upd[k]; });
+                    if (isRelease) { upd.release = true; delete upd.releaseDate; }
                     upd.status = 'pending'; upd.submittedAt = Date.now(); upd.developerUid = currentUser.uid; upd.appName = String(app.name || updates.name).slice(0, 100);
                     return db.ref(`appUpdates/${currentUser.uid}/${id}`).set(upd).then(() => {
-                        addActivityLog(`Update for "${updates.name}" (${updates.version}) submitted for review`);
-                        addNotification(`Your update for "${updates.name}" was submitted for review. The current version stays live until it is approved.`);
+                        addActivityLog(isRelease ? `Release of "${updates.name}" (${updates.version}) submitted for review` : `Update for "${updates.name}" (${updates.version}) submitted for review`);
+                        addNotification(isRelease ? `Your release of "${updates.name}" was submitted for review. It stays "Coming soon" until it is approved.` : `Your update for "${updates.name}" was submitted for review. The current version stays live until it is approved.`);
                         closeEditModal(); renderMyApps();
-                        zdShow({ type: 'success', title: 'Update sent for review', body: 'The version on the store does not change until our team approves your update.', steps: ['Submitted', 'Team reviews your update', 'Decision by notification and email', 'New version replaces the old one'], ok: 'Got it' });
+                        if (isRelease) zdShow({ type: 'success', title: 'Release sent for review', body: 'The app stays in Coming soon until our team approves it. Then it goes live and everyone who pre-registered gets an email.', steps: ['Submitted', 'Team reviews the APK', 'Decision by notification and email', 'App goes live, pre-registered users are emailed'], ok: 'Got it' });
+                        else zdShow({ type: 'success', title: 'Update sent for review', body: 'The version on the store does not change until our team approves your update.', steps: ['Submitted', 'Team reviews your update', 'Decision by notification and email', 'New version replaces the old one'], ok: 'Got it' });
                     });
                 }
                 return db.ref(`apps/${id}`).update(updates).then(() => {
@@ -1763,6 +1788,7 @@
         // UPDATE APP
         // ============================================
         function openUpdateModal(appId) { openEditModal(appId, 'update'); }
+        function openReleaseModal(appId) { openEditModal(appId, 'release'); }
 
         // ============================================
         // DELETE APP
