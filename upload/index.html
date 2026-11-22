@@ -256,10 +256,18 @@
                         <div class="form-row">
                             <div class="form-group">
                                 <label>What do you want to do?</label>
-                                <select id="upStatus">
+                                <select id="upStatus" onchange="onUpStatusChange()">
                                     <option value="pending">Submit for review</option>
+                                    <option value="prerelease">Pre-release (Coming soon)</option>
                                     <option value="draft">Save as draft</option>
                                 </select>
+                            </div>
+                        </div>
+                        <div class="form-row full" id="upPreBox" hidden>
+                            <div class="form-group">
+                                <label>Expected release date <small>(optional)</small></label>
+                                <input type="date" id="upReleaseDate" />
+                                <small class="hint">Pre-release shows your app in "Coming soon" with a Pre-register button. You do not need the APK link or version now. Leave the date empty to show just "Coming soon". When you are ready, tap Release now in My Apps.</small>
                             </div>
                         </div>
                         <div class="step-nav">
@@ -279,6 +287,6 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
-    <script src="/assets/console.js?v=20261118h"></script>
+    <script src="/assets/console.js?v=20261122a"></script>
 </body>
 </html>
